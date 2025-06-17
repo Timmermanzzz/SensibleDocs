@@ -1,0 +1,139 @@
+{
+  "name": "sensible-docs",
+  "version": "1.0.0",
+  "description": "Web-applicatie voor gemeenten om documenten te anonimiseren volgens de Wet Open Overheid (WOO)",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
+    "dev:frontend": "vite",
+    "dev:backend": "nodemon backend/server.js",
+    "build": "vite build",
+    "build:docker": "docker build -t sensible-docs .",
+    "preview": "vite preview",
+    "vercel-build": "npm run build",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:e2e": "playwright test",
+    "lint": "eslint . --ext js,jsx,ts,tsx",
+    "lint:fix": "eslint . --ext js,jsx,ts,tsx --fix",
+    "type-check": "tsc --noEmit",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
+    "reset-demo": "node scripts/reset-demo.js",
+    "commit": "git-cz",
+    "semantic-release": "semantic-release"
+  },
+  "keywords": [
+    "WOO",
+    "document",
+    "anonymization",
+    "gemeente",
+    "compliance"
+  ],
+  "author": "Sensible Docs Team",
+  "license": "UNLICENSED",
+  "private": true,
+  "dependencies": {
+    "clsx": "^1.2.1",
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
+    "date-fns": "^2.29.3",
+    "dotenv-flow": "^3.2.0",
+    "express": "^4.18.2",
+    "express-rate-limit": "^6.7.0",
+    "helmet": "^6.0.1",
+    "joi": "^17.7.1",
+    "lucide-react": "^0.323.0",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^3.11.174",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-dropzone": "^14.2.3",
+    "react-hot-toast": "^2.4.0",
+    "react-pdf": "^7.5.1",
+    "react-query": "^3.39.3",
+    "react-router-dom": "^6.8.1",
+    "tailwind-merge": "^1.10.0",
+    "winston": "^3.8.2",
+    "zustand": "^4.3.6"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.6.0",
+    "@commitlint/cli": "^17.4.4",
+    "@commitlint/config-conventional": "^17.4.4",
+    "@playwright/test": "^1.31.1",
+    "@storybook/addon-a11y": "^6.5.16",
+    "@storybook/addon-essentials": "^6.5.16",
+    "@storybook/react": "^6.5.16",
+    "@tailwindcss/forms": "^0.5.3",
+    "@tailwindcss/typography": "^0.5.9",
+    "@testing-library/jest-dom": "^5.16.5",
+    "@testing-library/react": "^14.0.0",
+    "@testing-library/user-event": "^14.4.3",
+    "@types/compression": "^1.7.2",
+    "@types/cors": "^2.8.13",
+    "@types/express": "^4.17.17",
+    "@types/morgan": "^1.9.4",
+    "@types/multer": "^1.4.7",
+    "@types/react": "^18.0.28",
+    "@types/react-dom": "^18.0.11",
+    "@types/react-pdf": "^6.2.0",
+    "@typescript-eslint/eslint-plugin": "^5.54.0",
+    "@typescript-eslint/parser": "^5.54.0",
+    "@vitejs/plugin-react": "^3.1.0",
+    "autoprefixer": "^10.4.14",
+    "commitizen": "^4.3.0",
+    "concurrently": "^7.6.0",
+    "cz-conventional-changelog": "^3.3.0",
+    "eslint": "^8.35.0",
+    "eslint-plugin-jsx-a11y": "^6.7.1",
+    "eslint-plugin-react": "^7.32.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "husky": "^8.0.3",
+    "jest": "^29.4.3",
+    "jest-environment-jsdom": "^29.4.3",
+    "lint-staged": "^13.1.2",
+    "nodemon": "^2.0.20",
+    "postcss": "^8.4.21",
+    "semantic-release": "^20.1.0",
+    "tailwindcss": "^3.2.7",
+    "typescript": "^4.9.3",
+    "vite": "^4.1.0"
+  },
+  "config": {
+    "commitizen": {
+      "path": "./node_modules/cz-conventional-changelog"
+    }
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "git add"
+    ]
+  },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "setupFilesAfterEnv": [
+      "<rootDir>/src/setupTests.ts"
+    ],
+    "collectCoverageFrom": [
+      "src/**/*.{js,jsx,ts,tsx}",
+      "backend/**/*.{js,ts}",
+      "!src/**/*.d.ts",
+      "!src/main.tsx",
+      "!src/vite-env.d.ts"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 85,
+        "functions": 85,
+        "lines": 85,
+        "statements": 85
+      }
+    }
+  }
+}

@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  # Frontend development server
+  frontend:
+    build:
+      context: .
+      target: builder
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - VITE_API_BASE_URL=http://localhost:3001/api
+    command: npm run dev:frontend
+    depends_on:
+      - backend
+    networks:
+      - sensible-docs
+
+  # Backend API server
+  backend:
+    build:
+      context: .
+      target: backend
+    ports:
+      - "3001:3001"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - ./uploads:/app/uploads
+      - ./tmp:/app/tmp
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - CORS_ORIGIN=http://localhost:3000
+      - LOG_LEVEL=debug
+      - LOG_FILE=/app/tmp/demo/logs/app.log
+      - UPLOAD_DIR=/app/uploads
+      - TEMP_DIR=/app/tmp/demo
+      - AI_SERVICE_URL=http://mock-ai:8000
+    command: npm run dev:backend
+    depends_on:
+      - mock-ai
+    networks:
+      - sensible-docs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Mock AI service for demo
+  mock-ai:
+    image: python:3.11-alpine
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./mock-ai:/app
+    working_dir: /app
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: >
+      sh -c "
+        echo 'Starting Mock AI Service...' &&
+        python -m http.server 8000 --bind 0.0.0.0
+      "
+    networks:
+      - sensible-docs
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  sensible-docs:
+    driver: bridge
+
+volumes:
+  node_modules:
+  uploads:
+  demo_logs: 

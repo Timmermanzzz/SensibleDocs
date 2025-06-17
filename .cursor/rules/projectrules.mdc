@@ -1,0 +1,107 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+Sensible Docs is een web-applicatie waarmee gemeenten eenvoudig hun documenten kunnen anonimiseren volgens de Wet Open Overheid (WOO). Achter de schermen draait een BERT-gebaseerd model (on-premise bij de gemeente) dat 99 % van alle PII in meer dan 50 talen detecteert en maskeert. Sensible Docs levert daarbovenop een waterdichte audit-trail, flexibele profiel-configuratie en heldere rapportages, zodat WOO-verzoeken snel, compleet en compliant afgehandeld kunnen worden.
+
+1 | Consistentie & Structuur
+E2E-tool
+Kies één end-to-end testframework: wij adviseren Playwright voor brede cross-browser dekking.
+
+Tailwind-config
+In tailwind.config.js een expliciet theme.extend.colors-blok op basis van de Sensible-huisstijl (o.a. primary: "#00584A", secondary: "#E6F4F1", accent: "#6B46C1").
+
+Naamgeving & spelling
+Corrigeer alle typfouten (bijv. “Projct tuels” → “Project Rules”) en hanteer CamelCase voor mappen/bestanden (bijv. src/components/ProfileSelector.tsx).
+
+2 | Development-workflow
+Git-hygiëne
+
+Commitlint + Husky pre-commit hooks voor linting & unit-tests
+
+Conventional Commits + semantic-release voor automatische changelogs en versiebeheer
+
+Branch-policy
+
+Voeg een CODEOWNERS-bestand toe
+
+Gebruik een PR-template met checklist: tests, a11y-audit, docs bijwerken
+
+Docker-build
+
+Multi-stage build: node:18-alpine (build) → nginx:alpine (serve statics)
+
+3 | Architectuur & Codekwaliteit
+State-management
+
+React Query voor server-state
+
+Zustand (of Redux Toolkit) voor UI-state (tabs, modals)
+
+Error handling
+
+Frontend: globale React ErrorBoundary + toast-notificaties
+
+Backend: centrale Express-error-middleware met uniform JSON-schema
+
+Logging & observability
+
+Frontend: stuur console-errors naar een mock Sentry (lokaal tijdens demo)
+
+Backend: winston met transports naar console én file (/tmp/demo/logs)
+
+Code splitting & performance
+
+Lazy-load zware modules (pdf.js, Dropzone) via React.lazy + Suspense
+
+In vite.config.js: build.sourcemap = false voor kleinere bundles
+
+4 | Security & Compliance (ook in demo)
+Aspect	Aanvulling
+Secrets	Gebruik een .env.example + dotenv-flow; lees secrets uit environment-vars, nooit hard-coded
+Static Application Security Testing	Integreer npm audit, npx snyk test of github/codeql-action in CI
+CSP-headers	Definieer strikte Content-Security-Policy in Nginx-config om PDF-viewer te beschermen
+
+5 | Testing-uitbreiding
+Coverage-gate
+
+Minimum 85 % coverage in jest.config.js, CI faalt daaronder
+
+Contract-testing
+
+Gebruik Pact voor /api/mask & /api/audit, met Semantic Versioning voor provider stubs
+
+Accessibility
+
+Voeg axe-core checks per PR toe
+
+Lighthouse CI run (score ≥ 90) voor key pages
+
+6 | Deployment & Demo-stability
+docker-compose voor lokaal dev: services frontend, backend, mock-ai (bijv. python -m http.server voor vaste JSON)
+
+Health-checks in Dockerfile:
+
+dockerfile
+Copy
+Edit
+HEALTHCHECK CMD curl -f http://localhost:3000/health || exit 1
+Demo Reset-script
+
+Eén Node-script (scripts/reset-demo.js) om /tmp/demo en in-memory logs schoon te maken vóór elke sessie
+
+7 | Documentatie & Developer Experience
+Storybook voor UI-componenten: versnelt review met stakeholders
+
+ADR’s (Architecture Decision Records) in /docs/adr/ voor belangrijke keuzes (Tailwind, Express, dummy-auth)
+
+README.md bevat:
+
+Quick Start (install, build, run)
+
+Demo Reset instructies
+
+Known Issues en workaround
+
+
