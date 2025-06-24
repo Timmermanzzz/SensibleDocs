@@ -10,7 +10,7 @@ import { dirname, join } from 'path'
 import fs from 'fs/promises'
 import winston from 'winston'
 import dotenv from 'dotenv-flow'
-const auditService = require('./services/auditService.js')
+import auditService from './services/supabaseAuditService.js'
 
 // Load environment variables
 dotenv.config()

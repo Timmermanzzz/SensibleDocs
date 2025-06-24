@@ -1,5 +1,5 @@
-const crypto = require('crypto')
-const winston = require('winston')
+import crypto from 'crypto'
+import winston from 'winston'
 
 // In-memory storage for demo - in production you'd use a database
 let auditEvents = []
@@ -313,7 +313,7 @@ if (process.env.VERCEL_ENV) {
   initializeDemoData().catch(console.error)
 }
 
-module.exports = {
+export default {
   logEvent,
   getAuditLog,
   verifyIntegrity,

@@ -280,7 +280,7 @@ class VercelAuditService {
   }
 }
 
-const auditService = new VercelAuditService()
+const auditService = require('./supabaseAuditService')
 
 // Mock data
 const mockProjects = [
