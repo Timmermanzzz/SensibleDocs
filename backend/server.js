@@ -50,6 +50,7 @@ try {
 }
 
 const app = express()
+app.set('trust proxy', true)
 const PORT = process.env.PORT || 3001
 
 // Security middleware
