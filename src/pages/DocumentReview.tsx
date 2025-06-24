@@ -40,6 +40,7 @@ const DocumentReview = () => {
   const [showOriginal, setShowOriginal] = useState(false)
   const [selectedItem, setSelectedItem] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
+
   
   // Sample PDF URL (local file for demo)
   const samplePdfUrl = '/samples/woo-verzoek-2024-001.pdf'
@@ -57,87 +58,96 @@ const DocumentReview = () => {
       url: samplePdfUrl
     })
 
-    // Mock PII items with realistic PDF positions matching our Dutch WOO document
+    // Mock PII items with exact text that should be found in the PDF TextLayer
     setPiiItems([
       {
         id: '1',
         type: 'name',
-        original: 'Andreas Gal',
+        original: 'Jan Janssen',
         masked: '[NAAM VERWIJDERD]',
         confidence: 0.98,
-        position: { x: 250, y: 622, width: 75, height: 12, page: 1 },
+        position: { x: 114, y: 521, width: 70, height: 12, page: 1 },
         approved: false
       },
       {
         id: '2', 
-        type: 'email',
-        original: 'agal@mozilla.com',
-        masked: '[EMAIL VERWIJDERD]',
-        confidence: 0.99,
-        position: { x: 250, y: 602, width: 130, height: 12, page: 1 },
+        type: 'address',
+        original: 'Postbus 12345',
+        masked: '[ADRES VERWIJDERD]',
+        confidence: 0.92,
+        position: { x: 114, y: 540, width: 85, height: 12, page: 1 },
         approved: false
       },
       {
         id: '3',
-        type: 'phone',
-        original: '1-650-903-0800',
-        masked: '[TELEFOON VERWIJDERD]',
-        confidence: 0.95,
-        position: { x: 250, y: 582, width: 100, height: 12, page: 1 },
+        type: 'address',
+        original: '1234 AB Amsterdam',
+        masked: '[ADRES VERWIJDERD]',
+        confidence: 0.94,
+        position: { x: 114, y: 559, width: 120, height: 12, page: 1 },
         approved: false
       },
       {
         id: '4',
-        type: 'address',
-        original: 'Mountain View, CA',
-        masked: '[ADRES VERWIJDERD]',
-        confidence: 0.92,
-        position: { x: 250, y: 562, width: 110, height: 12, page: 1 },
-        approved: true
+        type: 'phone',
+        original: '06-12345678',
+        masked: '[TELEFOON VERWIJDERD]',
+        confidence: 0.95,
+        position: { x: 114, y: 578, width: 90, height: 12, page: 1 },
+        approved: false
       },
       {
         id: '5',
-        type: 'name',
-        original: 'Brendan Eich',
-        masked: '[NAAM VERWIJDERD]',
+        type: 'email',
+        original: 'jan.janssen@email.nl',
+        masked: '[EMAIL VERWIJDERD]',
         confidence: 0.97,
-        position: { x: 250, y: 542, width: 85, height: 12, page: 1 },
-        approved: true
+        position: { x: 114, y: 597, width: 130, height: 12, page: 1 },
+        approved: false
       },
       {
         id: '6',
-        type: 'name',
-        original: 'Jan Janssen',
-        masked: '[NAAM VERWIJDERD]',
-        confidence: 0.96,
-        position: { x: 50, y: 382, width: 75, height: 12, page: 1 },
+        type: 'bsn',
+        original: '123456789',
+        masked: '[BSN VERWIJDERD]',
+        confidence: 0.99,
+        position: { x: 114, y: 616, width: 70, height: 12, page: 1 },
         approved: false
       },
       {
         id: '7',
-        type: 'phone',
-        original: '06-12345678',
-        masked: '[TELEFOON VERWIJDERD]',
-        confidence: 0.94,
-        position: { x: 50, y: 342, width: 85, height: 12, page: 1 },
+        type: 'name',
+        original: 'Andreas Gal',
+        masked: '[NAAM VERWIJDERD]',
+        confidence: 0.96,
+        position: { x: 270, y: 389, width: 75, height: 12, page: 1 },
         approved: false
       },
       {
         id: '8',
         type: 'email',
-        original: 'jan.janssen@email.nl',
+        original: 'agal@mozilla.com',
         masked: '[EMAIL VERWIJDERD]',
-        confidence: 0.97,
-        position: { x: 50, y: 322, width: 140, height: 12, page: 1 },
+        confidence: 0.98,
+        position: { x: 238, y: 408, width: 110, height: 12, page: 1 },
         approved: false
       },
       {
         id: '9',
-        type: 'bsn',
-        original: '123456789',
-        masked: '[BSN VERWIJDERD]',
-        confidence: 0.99,
-        position: { x: 50, y: 302, width: 70, height: 12, page: 1 },
+        type: 'name',
+        original: 'Brendan Eich',
+        masked: '[NAAM VERWIJDERD]',
+        confidence: 0.97,
+        position: { x: 268, y: 467, width: 85, height: 12, page: 1 },
+        approved: false
+      },
+      {
+        id: '10',
+        type: 'phone',
+        original: '1-650-903-0800',
+        masked: '[TELEFOON VERWIJDERD]',
+        confidence: 0.94,
+        position: { x: 330, y: 427, width: 100, height: 12, page: 1 },
         approved: false
       }
     ])
@@ -215,6 +225,8 @@ const DocumentReview = () => {
     
     toast.success(`Document gedownload met ${approvedCount} geanonimiseerde items`)
   }
+
+
 
   const getTypeLabel = (type: PIIHighlight['type']) => {
     const labels = {
@@ -371,6 +383,8 @@ const DocumentReview = () => {
                   <Undo2 className="w-4 h-4 mr-2" />
                   Alles weigeren
                 </button>
+                
+
                 
                 <button
                   onClick={() => setShowOriginal(!showOriginal)}

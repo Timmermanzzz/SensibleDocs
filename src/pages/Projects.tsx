@@ -22,10 +22,12 @@ import {
 } from 'lucide-react'
 import { Project, ProjectStatus, ProjectPriority } from '../types/project'
 import { useAuditLogger } from '../hooks/useAuditLogger'
+import { useLanguageStore } from '../store/languageStore'
 import ProjectCreateModal from '../components/ProjectCreateModal'
 
 const Projects = () => {
   const { logEvent } = useAuditLogger()
+  const { t } = useLanguageStore()
   const [projects, setProjects] = useState<Project[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all'>('all')
@@ -271,9 +273,9 @@ const Projects = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900">Projecten</h1>
+          <h1 className="text-2xl font-bold text-neutral-900">{t('projects.title')}</h1>
           <p className="text-neutral-600">
-            Beheer WOO-verzoeken en documentprojecten
+            {t('projects.subtitle')}
           </p>
         </div>
         <button
@@ -281,7 +283,7 @@ const Projects = () => {
           className="btn-primary flex items-center space-x-2"
         >
           <Plus className="w-4 h-4" />
-          <span>Nieuw Project</span>
+          <span>{t('projects.createNew')}</span>
         </button>
       </div>
 
@@ -293,7 +295,7 @@ const Projects = () => {
               <FolderOpen className="w-5 h-5 text-blue-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-neutral-600">Actieve Projecten</p>
+              <p className="text-sm font-medium text-neutral-600">{t('projects.activeProjects')}</p>
               <p className="text-2xl font-bold text-neutral-900">
                 {projects.filter(p => p.status === 'active').length}
               </p>
@@ -307,7 +309,7 @@ const Projects = () => {
               <CheckCircle className="w-5 h-5 text-green-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-neutral-600">Afgerond</p>
+              <p className="text-sm font-medium text-neutral-600">{t('projects.completed')}</p>
               <p className="text-2xl font-bold text-neutral-900">
                 {projects.filter(p => p.status === 'completed').length}
               </p>
@@ -321,7 +323,7 @@ const Projects = () => {
               <FileText className="w-5 h-5 text-orange-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-neutral-600">Totaal Documenten</p>
+              <p className="text-sm font-medium text-neutral-600">{t('documents.totalDocuments')}</p>
               <p className="text-2xl font-bold text-neutral-900">
                 {projects.reduce((sum, p) => sum + p.totalDocuments, 0)}
               </p>
@@ -335,7 +337,7 @@ const Projects = () => {
               <AlertCircle className="w-5 h-5 text-red-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-neutral-600">Urgent</p>
+              <p className="text-sm font-medium text-neutral-600">{t('projects.urgent')}</p>
               <p className="text-2xl font-bold text-neutral-900">
                 {projects.filter(p => p.priority === 'urgent').length}
               </p>
@@ -351,7 +353,7 @@ const Projects = () => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-neutral-400" />
             <input
               type="text"
-              placeholder="Zoek projecten..."
+              placeholder={t('projects.searchPlaceholder')}
               value={searchTerm}
               onChange={(e) => handleSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
@@ -363,11 +365,11 @@ const Projects = () => {
             onChange={(e) => handleStatusFilter(e.target.value as ProjectStatus | 'all')}
             className="px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
           >
-            <option value="all">Alle statussen</option>
-            <option value="active">Actief</option>
-            <option value="completed">Afgerond</option>
-            <option value="on_hold">On Hold</option>
-            <option value="archived">Gearchiveerd</option>
+            <option value="all">{t('projects.allStatuses')}</option>
+            <option value="active">{t('projects.active')}</option>
+            <option value="completed">{t('projects.completed')}</option>
+            <option value="on_hold">{t('projects.onHold')}</option>
+            <option value="archived">{t('projects.archived')}</option>
           </select>
 
           <select
@@ -375,11 +377,11 @@ const Projects = () => {
             onChange={(e) => handlePriorityFilter(e.target.value as ProjectPriority | 'all')}
             className="px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
           >
-            <option value="all">Alle prioriteiten</option>
-            <option value="urgent">Urgent</option>
-            <option value="high">Hoog</option>
-            <option value="medium">Gemiddeld</option>
-            <option value="low">Laag</option>
+            <option value="all">{t('projects.allPriorities')}</option>
+            <option value="urgent">{t('projects.urgent')}</option>
+            <option value="high">{t('projects.high')}</option>
+            <option value="medium">{t('projects.medium')}</option>
+            <option value="low">{t('projects.low')}</option>
           </select>
 
           <select
@@ -391,10 +393,10 @@ const Projects = () => {
             }}
             className="px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
           >
-            <option value="updated-desc">Laatst bijgewerkt</option>
-            <option value="created-desc">Nieuwste eerst</option>
-            <option value="name-asc">Naam A-Z</option>
-            <option value="dueDate-asc">Deadline dichtbij</option>
+            <option value="updated-desc">{t('projects.lastUpdated')}</option>
+            <option value="created-desc">{t('projects.newestFirst')}</option>
+            <option value="name-asc">{t('projects.nameAZ')}</option>
+            <option value="dueDate-asc">{t('projects.closestDeadline')}</option>
           </select>
         </div>
       </div>
@@ -406,22 +408,22 @@ const Projects = () => {
             <thead className="bg-neutral-50 border-b border-neutral-200">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Project
+                  {t('projects.project')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Status
+                  {t('projects.status')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Voortgang
+                  {t('projects.progress')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Deadline
+                  {t('projects.dueDate')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Aanvrager
+                  {t('projects.requester')}
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Acties
+                  {t('projects.actions')}
                 </th>
               </tr>
             </thead>
@@ -446,9 +448,9 @@ const Projects = () => {
                         </p>
                         <div className="flex items-center space-x-2 mt-1">
                           <span className={getPriorityBadge(project.priority)}>
-                            {project.priority === 'urgent' ? 'Urgent' :
-                             project.priority === 'high' ? 'Hoog' :
-                             project.priority === 'medium' ? 'Gemiddeld' : 'Laag'}
+                            {project.priority === 'urgent' ? t('projects.urgent') :
+                             project.priority === 'high' ? t('projects.high') :
+                             project.priority === 'medium' ? t('projects.medium') : t('projects.low')}
                           </span>
                           {project.tags.slice(0, 2).map(tag => (
                             <span key={tag} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-800">
@@ -463,9 +465,9 @@ const Projects = () => {
                     <div className="flex items-center space-x-2">
                       {getStatusIcon(project.status)}
                       <span className={getStatusBadge(project.status)}>
-                        {project.status === 'active' ? 'Actief' :
-                         project.status === 'completed' ? 'Afgerond' :
-                         project.status === 'on_hold' ? 'On Hold' : 'Gearchiveerd'}
+                        {project.status === 'active' ? t('projects.active') :
+                         project.status === 'completed' ? t('projects.completed') :
+                         project.status === 'on_hold' ? t('projects.onHold') : t('projects.archived')}
                       </span>
                     </div>
                   </td>
@@ -473,7 +475,7 @@ const Projects = () => {
                     <div className="space-y-1">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-neutral-600">
-                          {project.processedDocuments}/{project.totalDocuments} documenten
+                          {project.processedDocuments}/{project.totalDocuments} {t('projects.documents')}
                         </span>
                         <span className="text-neutral-900 font-medium">
                           {getProgressPercentage(project)}%
@@ -494,7 +496,7 @@ const Projects = () => {
                           {formatDate(project.dueDate)}
                         </p>
                         <p className="text-neutral-500">
-                          {Math.ceil((new Date(project.dueDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dagen
+                          {Math.ceil((new Date(project.dueDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} {t('projects.days')}
                         </p>
                       </div>
                     )}
@@ -514,7 +516,7 @@ const Projects = () => {
                       <Link
                         to={`/upload?project=${project.id}`}
                         className="p-2 text-primary hover:text-primary/80 rounded-lg hover:bg-primary/10"
-                        title="Documenten uploaden"
+                        title={t('projects.uploadDocuments')}
                       >
                         <Upload className="w-4 h-4" />
                       </Link>
@@ -522,13 +524,13 @@ const Projects = () => {
                         to={`/project/${project.id}`}
                         onClick={() => handleProjectView(project.id)}
                         className="p-2 text-neutral-400 hover:text-neutral-600 rounded-lg hover:bg-neutral-100"
-                        title="Project bekijken"
+                        title={t('projects.viewProject')}
                       >
                         <Eye className="w-4 h-4" />
                       </Link>
                       <button
                         className="p-2 text-neutral-400 hover:text-neutral-600 rounded-lg hover:bg-neutral-100"
-                        title="Meer opties"
+                        title={t('projects.moreOptions')}
                       >
                         <MoreHorizontal className="w-4 h-4" />
                       </button>
@@ -545,19 +547,19 @@ const Projects = () => {
         <div className="text-center py-12">
           <FolderOpen className="w-12 h-12 text-neutral-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-neutral-900 mb-2">
-            Geen projecten gevonden
+            {t('projects.noProjectsFound')}
           </h3>
           <p className="text-neutral-600 mb-6">
             {searchTerm || statusFilter !== 'all' || priorityFilter !== 'all'
-              ? 'Pas je filters aan om meer resultaten te zien.'
-              : 'Maak je eerste project aan om te beginnen.'}
+              ? t('projects.adjustFilters')
+              : t('projects.createFirstProject')}
           </p>
           {(!searchTerm && statusFilter === 'all' && priorityFilter === 'all') && (
             <button
               onClick={() => setShowCreateModal(true)}
               className="btn-primary"
             >
-              Nieuw Project Aanmaken
+              {t('projects.createNewProject')}
             </button>
           )}
         </div>

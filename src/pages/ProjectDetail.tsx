@@ -20,7 +20,10 @@ import {
   Archive,
   Settings,
   Tag,
-  Building
+  Building,
+  Package,
+  Loader2,
+  X
 } from 'lucide-react'
 import { Project, ProjectDocument } from '../types/project'
 import { useAuditLogger } from '../hooks/useAuditLogger'
@@ -33,6 +36,12 @@ const ProjectDetail = () => {
   const [documents, setDocuments] = useState<ProjectDocument[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'settings'>('overview')
+  const [isDownloadingAll, setIsDownloadingAll] = useState(false)
+  const [downloadProgress, setDownloadProgress] = useState<{
+    step: number
+    message: string
+    completed: boolean
+  }>({ step: 0, message: '', completed: false })
 
   useEffect(() => {
     if (id) {
@@ -246,6 +255,80 @@ const ProjectDetail = () => {
   const getProgressPercentage = () => {
     if (!project || project.totalDocuments === 0) return 0
     return Math.round((project.processedDocuments / project.totalDocuments) * 100)
+  }
+
+  const handleDownloadAll = async () => {
+    if (!project || documents.length === 0) return
+
+    setIsDownloadingAll(true)
+    setDownloadProgress({ step: 1, message: 'Documenten verzamelen...', completed: false })
+
+    try {
+      // Simulate the download process with realistic steps
+      const steps = [
+        { message: 'Documenten verzamelen...', delay: 1000 },
+        { message: 'Bestanden voorbereiden...', delay: 1500 },
+        { message: 'ZIP-archief maken...', delay: 2000 },
+        { message: 'Anonimisering valideren...', delay: 1200 },
+        { message: 'Download voorbereiden...', delay: 800 }
+      ]
+
+      for (let i = 0; i < steps.length; i++) {
+        setDownloadProgress({ 
+          step: i + 1, 
+          message: steps[i].message, 
+          completed: false 
+        })
+        await new Promise(resolve => setTimeout(resolve, steps[i].delay))
+      }
+
+      // Create mock ZIP file download
+      const zipContent = `Project: ${project.name}\nDocumenten: ${documents.length}\nAnonimisatiedatum: ${new Date().toLocaleString('nl-NL')}\n\nDit zou een ZIP bestand zijn met alle geanonimiseerde documenten.`
+      const blob = new Blob([zipContent], { type: 'application/zip' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${project.requestNumber}-alle-documenten-geanonimiseerd.zip`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+
+      setDownloadProgress({ 
+        step: steps.length, 
+        message: 'Download voltooid!', 
+        completed: true 
+      })
+
+      // Log the download event
+      logEvent({
+        eventType: 'download_requested',
+        action: 'Bulk project download',
+        details: { 
+          projectId: project.id, 
+          documentCount: documents.length,
+          type: 'bulk_anonymized'
+        }
+      })
+
+      // Auto-close after success
+      setTimeout(() => {
+        setIsDownloadingAll(false)
+        setDownloadProgress({ step: 0, message: '', completed: false })
+      }, 2000)
+
+    } catch (error) {
+      console.error('Download error:', error)
+      setDownloadProgress({ 
+        step: 0, 
+        message: 'Download mislukt. Probeer opnieuw.', 
+        completed: false 
+      })
+      setTimeout(() => {
+        setIsDownloadingAll(false)
+        setDownloadProgress({ step: 0, message: '', completed: false })
+      }, 3000)
+    }
   }
 
   if (loading) {
@@ -489,13 +572,26 @@ const ProjectDetail = () => {
                 <h4 className="font-semibold text-neutral-900">
                   Documenten ({documents.length})
                 </h4>
-                <Link
-                  to={`/upload?project=${project.id}`}
-                  className="btn-sm btn-primary flex items-center space-x-2"
-                >
-                  <Upload className="w-4 h-4" />
-                  <span>Upload</span>
-                </Link>
+                <div className="flex items-center space-x-2">
+                  {documents.length > 0 && (
+                    <button
+                      onClick={handleDownloadAll}
+                      disabled={isDownloadingAll}
+                      className="btn-sm btn-secondary flex items-center space-x-2"
+                      title="Download alle geanonimiseerde documenten als ZIP"
+                    >
+                      <Package className="w-4 h-4" />
+                      <span>Download alles</span>
+                    </button>
+                  )}
+                  <Link
+                    to={`/upload?project=${project.id}`}
+                    className="btn-sm btn-primary flex items-center space-x-2"
+                  >
+                    <Upload className="w-4 h-4" />
+                    <span>Upload</span>
+                  </Link>
+                </div>
               </div>
 
               {documents.length > 0 ? (
@@ -639,6 +735,92 @@ const ProjectDetail = () => {
           )}
         </div>
       </div>
+
+      {/* Download All Progress Modal */}
+      {isDownloadingAll && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-neutral-900">
+                Project downloaden
+              </h3>
+              {downloadProgress.completed && (
+                <button
+                  onClick={() => {
+                    setIsDownloadingAll(false)
+                    setDownloadProgress({ step: 0, message: '', completed: false })
+                  }}
+                  className="p-1 text-neutral-400 hover:text-neutral-600 rounded"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+
+            <div className="space-y-4">
+              {/* Progress steps */}
+              <div className="space-y-3">
+                {[
+                  'Documenten verzamelen',
+                  'Bestanden voorbereiden',
+                  'ZIP-archief maken',
+                  'Anonimisering valideren',
+                  'Download voorbereiden'
+                ].map((step, index) => (
+                  <div key={index} className="flex items-center space-x-3">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                      downloadProgress.step > index + 1
+                        ? 'bg-green-100 text-green-600'
+                        : downloadProgress.step === index + 1
+                        ? 'bg-primary text-white'
+                        : 'bg-neutral-100 text-neutral-400'
+                    }`}>
+                      {downloadProgress.step > index + 1 ? (
+                        <CheckCircle className="w-4 h-4" />
+                      ) : downloadProgress.step === index + 1 ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <span className="text-xs font-medium">{index + 1}</span>
+                      )}
+                    </div>
+                    <span className={`text-sm ${
+                      downloadProgress.step >= index + 1
+                        ? 'text-neutral-900 font-medium'
+                        : 'text-neutral-500'
+                    }`}>
+                      {step}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Current status */}
+              <div className="pt-4 border-t border-neutral-200">
+                <div className="flex items-center space-x-2">
+                  {!downloadProgress.completed ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                  ) : (
+                    <CheckCircle className="w-4 h-4 text-green-600" />
+                  )}
+                  <span className={`text-sm font-medium ${
+                    downloadProgress.completed ? 'text-green-600' : 'text-primary'
+                  }`}>
+                    {downloadProgress.message}
+                  </span>
+                </div>
+
+                {downloadProgress.completed && (
+                  <div className="mt-3 p-3 bg-green-50 rounded-lg">
+                    <p className="text-sm text-green-700">
+                      <strong>{documents.length} documenten</strong> succesvol gedownload als ZIP-bestand.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

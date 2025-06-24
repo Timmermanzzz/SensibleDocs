@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { useUser } from '../store/userStore'
 import { useAuditLogger } from '../hooks/useAuditLogger'
+import { useLanguageStore } from '../store/languageStore'
 import toast from 'react-hot-toast'
 
 interface AuditEvent {
@@ -65,6 +66,7 @@ interface IntegrityCheck {
 const AuditLog = () => {
   const { currentUser } = useUser()
   const { logPageVisit } = useAuditLogger()
+  const { t } = useLanguageStore()
   const [logs, setLogs] = useState<AuditEvent[]>([])
   const [stats, setStats] = useState<AuditStats | null>(null)
   const [integrity, setIntegrity] = useState<IntegrityCheck | null>(null)
@@ -244,9 +246,9 @@ const AuditLog = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900">Audit Trail</h1>
+          <h1 className="text-2xl font-bold text-neutral-900">{t('audit.trail')}</h1>
           <p className="text-neutral-600">
-            Complete logging van alle gebruikersacties voor WOO-compliance
+            {t('audit.subtitle')}
           </p>
         </div>
         
@@ -256,7 +258,7 @@ const AuditLog = () => {
             className="btn btn-outline"
           >
             <Filter className="w-4 h-4 mr-2" />
-            Filters
+            {t('audit.filters')}
           </button>
           
           <button
@@ -264,7 +266,7 @@ const AuditLog = () => {
             className="btn btn-outline"
           >
             <Shield className="w-4 h-4 mr-2" />
-            Integriteit verifiëren
+            {t('audit.integrityVerify')}
           </button>
           
           <button
@@ -272,7 +274,7 @@ const AuditLog = () => {
             className="btn btn-primary"
           >
             <Download className="w-4 h-4 mr-2" />
-            Exporteren
+            {t('audit.export')}
           </button>
           
           <button
@@ -294,7 +296,7 @@ const AuditLog = () => {
                   <Database className="w-6 h-6 text-blue-600" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-neutral-600">Totaal Events</p>
+                  <p className="text-sm font-medium text-neutral-600">{t('audit.totalEvents')}</p>
                   <p className="text-2xl font-bold text-neutral-900">{stats.totalEvents}</p>
                 </div>
               </div>
@@ -308,7 +310,7 @@ const AuditLog = () => {
                   <FileText className="w-6 h-6 text-green-600" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-neutral-600">Documenten</p>
+                  <p className="text-sm font-medium text-neutral-600">{t('audit.documents')}</p>
                   <p className="text-2xl font-bold text-neutral-900">{stats.documentsProcessed}</p>
                 </div>
               </div>
@@ -322,7 +324,7 @@ const AuditLog = () => {
                   <User className="w-6 h-6 text-purple-600" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-neutral-600">Actieve Gebruikers</p>
+                  <p className="text-sm font-medium text-neutral-600">{t('audit.activeUsers')}</p>
                   <p className="text-2xl font-bold text-neutral-900">{Object.keys(stats.users).length}</p>
                 </div>
               </div>
@@ -340,9 +342,9 @@ const AuditLog = () => {
                   )}
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-neutral-600">Log Integriteit</p>
+                  <p className="text-sm font-medium text-neutral-600">{t('audit.logIntegrity')}</p>
                   <p className={`text-2xl font-bold ${integrity?.isValid ? 'text-green-600' : 'text-red-600'}`}>
-                    {integrity?.isValid ? 'Valid' : 'Issues'}
+                    {integrity?.isValid ? t('audit.valid') : 'Issues'}
                   </p>
                 </div>
               </div>

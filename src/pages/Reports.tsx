@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { BarChart3, Download, Calendar, TrendingUp } from 'lucide-react'
 import { useAuditLogger } from '../hooks/useAuditLogger'
+import { useLanguageStore } from '../store/languageStore'
 import toast from 'react-hot-toast'
 
 const Reports = () => {
   const { logPageVisit, logEvent } = useAuditLogger()
+  const { t } = useLanguageStore()
   const [selectedPeriod, setSelectedPeriod] = useState('month')
 
   useEffect(() => {
@@ -29,10 +31,10 @@ const Reports = () => {
     <div className="max-w-6xl mx-auto space-y-6">
       <div className="card p-6">
         <h1 className="text-2xl font-bold text-neutral-900 mb-2">
-          Rapporten & Analytics
+          {t('reports.analytics')}
         </h1>
         <p className="text-neutral-600">
-          Inzicht in documentverwerking, compliance en gebruik van het systeem.
+          {t('reports.subtitle')}
         </p>
       </div>
 
@@ -72,7 +74,7 @@ const Reports = () => {
             }}
           >
             <Download className="w-4 h-4 mr-2" />
-            Rapport downloaden
+            {t('reports.downloadReport')}
           </button>
         </div>
       </div>
@@ -82,7 +84,7 @@ const Reports = () => {
         <div className="card p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-neutral-600">Totaal documenten</p>
+              <p className="text-sm font-medium text-neutral-600">{t('reports.totalDocuments')}</p>
               <p className="text-2xl font-bold text-neutral-900 mt-1">
                 {reportData.totalDocuments.toLocaleString()}
               </p>
@@ -94,7 +96,7 @@ const Reports = () => {
         <div className="card p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-neutral-600">Succesvol verwerkt</p>
+              <p className="text-sm font-medium text-neutral-600">{t('reports.successfullyProcessed')}</p>
               <p className="text-2xl font-bold text-neutral-900 mt-1">
                 {reportData.processedSuccessfully.toLocaleString()}
               </p>
@@ -106,7 +108,7 @@ const Reports = () => {
         <div className="card p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-neutral-600">Gem. verwerkingstijd</p>
+              <p className="text-sm font-medium text-neutral-600">{t('reports.avgProcessingTime')}</p>
               <p className="text-2xl font-bold text-neutral-900 mt-1">
                 {reportData.avgProcessingTime}
               </p>
@@ -120,7 +122,7 @@ const Reports = () => {
         <div className="card p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-neutral-600">PII items gevonden</p>
+              <p className="text-sm font-medium text-neutral-600">{t('reports.piiItemsFound')}</p>
               <p className="text-2xl font-bold text-neutral-900 mt-1">
                 {reportData.piiItemsFound.toLocaleString()}
               </p>
@@ -137,14 +139,14 @@ const Reports = () => {
         <div className="card">
           <div className="px-6 py-4 border-b border-neutral-200">
             <h3 className="text-lg font-semibold text-neutral-900">
-              Verwerking per dag
+              {t('reports.processingPerDay')}
             </h3>
           </div>
           <div className="p-6">
             <div className="bg-neutral-100 rounded-lg p-8 text-center min-h-[300px] flex items-center justify-center">
               <div>
                 <BarChart3 className="w-12 h-12 text-neutral-400 mx-auto mb-4" />
-                <p className="text-neutral-600">Grafiek wordt hier weergegeven</p>
+                <p className="text-neutral-600">{t('reports.chartPlaceholder')}</p>
               </div>
             </div>
           </div>
@@ -153,14 +155,14 @@ const Reports = () => {
         <div className="card">
           <div className="px-6 py-4 border-b border-neutral-200">
             <h3 className="text-lg font-semibold text-neutral-900">
-              PII types gevonden
+              {t('reports.piiTypesFound')}
             </h3>
           </div>
           <div className="p-6">
             <div className="bg-neutral-100 rounded-lg p-8 text-center min-h-[300px] flex items-center justify-center">
               <div>
                 <BarChart3 className="w-12 h-12 text-neutral-400 mx-auto mb-4" />
-                <p className="text-neutral-600">Grafiek wordt hier weergegeven</p>
+                <p className="text-neutral-600">{t('reports.chartPlaceholder')}</p>
               </div>
             </div>
           </div>

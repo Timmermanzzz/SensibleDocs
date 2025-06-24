@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { useAuditLogger } from '../hooks/useAuditLogger'
 import { useUser } from '../store/userStore'
+import { useLanguageStore } from '../store/languageStore'
 import toast from 'react-hot-toast'
 
 interface SystemUser {
@@ -54,7 +55,8 @@ interface SystemSettings {
 const Settings = () => {
   const { logPageVisit, logEvent } = useAuditLogger()
   const { currentUser } = useUser()
-  const [activeTab, setActiveTab] = useState<'users' | 'notifications' | 'system' | 'security'>('users')
+  const { language, setLanguage, t } = useLanguageStore()
+  const [activeTab, setActiveTab] = useState<'general' | 'users' | 'notifications' | 'system' | 'security'>('general')
   const [isLoading, setIsLoading] = useState(false)
   
   // Users management
@@ -326,7 +328,7 @@ const Settings = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-neutral-900 mb-2">
-              Systeeminstellingen
+              {t('settings.title')}
             </h1>
             <p className="text-neutral-600">
               Beheer gebruikers, meldingen en systeemconfiguratie
@@ -352,9 +354,10 @@ const Settings = () => {
         <div className="border-b border-neutral-200">
           <nav className="flex space-x-8 px-6">
             {[
-              { id: 'users', label: 'Gebruikers', icon: Users },
-              { id: 'notifications', label: 'Meldingen', icon: Bell },
-              { id: 'system', label: 'Systeem', icon: Database },
+              { id: 'general', label: t('settings.general'), icon: Globe },
+              { id: 'users', label: t('settings.users'), icon: Users },
+              { id: 'notifications', label: t('settings.notifications'), icon: Bell },
+              { id: 'system', label: t('settings.system'), icon: Database },
               { id: 'security', label: 'Beveiliging', icon: Shield }
             ].map(tab => {
               const Icon = tab.icon
@@ -377,6 +380,78 @@ const Settings = () => {
         </div>
 
         <div className="p-6">
+          {/* General Tab */}
+          {activeTab === 'general' && (
+            <div className="space-y-6">
+              <h3 className="text-lg font-semibold text-neutral-900">
+                {t('settings.general')}
+              </h3>
+
+              {/* Language Settings */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    {t('settings.language')}
+                  </label>
+                  <p className="text-sm text-neutral-500 mb-3">
+                    {t('settings.selectLanguage')}
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-md">
+                    <button
+                      onClick={() => {
+                        setLanguage('nl')
+                        logEvent({
+                          eventType: 'language_changed',
+                          action: 'Language changed to Dutch',
+                          details: { language: 'nl' }
+                        })
+                        toast.success('Taal gewijzigd naar Nederlands')
+                      }}
+                      className={`p-4 border-2 rounded-lg transition-colors ${
+                        language === 'nl'
+                          ? 'border-primary bg-primary/5 text-primary'
+                          : 'border-neutral-200 hover:border-neutral-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-center space-x-2">
+                        <span className="text-lg">🇳🇱</span>
+                        <div className="text-center">
+                          <div className="font-medium">{t('settings.dutch')}</div>
+                          <div className="text-sm text-neutral-500">Nederlands</div>
+                        </div>
+                      </div>
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        setLanguage('en')
+                        logEvent({
+                          eventType: 'language_changed',
+                          action: 'Language changed to English',
+                          details: { language: 'en' }
+                        })
+                        toast.success('Language changed to English')
+                      }}
+                      className={`p-4 border-2 rounded-lg transition-colors ${
+                        language === 'en'
+                          ? 'border-primary bg-primary/5 text-primary'
+                          : 'border-neutral-200 hover:border-neutral-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-center space-x-2">
+                        <span className="text-lg">🇬🇧</span>
+                        <div className="text-center">
+                          <div className="font-medium">{t('settings.english')}</div>
+                          <div className="text-sm text-neutral-500">English</div>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Users Tab */}
           {activeTab === 'users' && (
             <div className="space-y-6">
@@ -545,16 +620,16 @@ const Settings = () => {
           {activeTab === 'notifications' && (
             <div className="space-y-6">
               <h3 className="text-lg font-semibold text-neutral-900">
-                Meldingsinstellingen
+                {t('settings.notificationSettings')}
               </h3>
               
               <div className="space-y-4">
                 {[
-                  { key: 'emailNotifications', label: 'Email meldingen', description: 'Ontvang email notificaties voor belangrijke events' },
-                  { key: 'uploadNotifications', label: 'Upload meldingen', description: 'Meldingen wanneer documenten zijn geüpload' },
-                  { key: 'errorNotifications', label: 'Fout meldingen', description: 'Onmiddellijke meldingen bij systeem fouten' },
-                  { key: 'weeklyReports', label: 'Wekelijkse rapporten', description: 'Automatische wekelijkse samenvattingen per email' },
-                  { key: 'securityAlerts', label: 'Beveiligingswaarschuwingen', description: 'Kritieke beveiligingsmeldingen en verdachte activiteiten' }
+                  { key: 'emailNotifications', label: t('settings.emailNotifications'), description: t('settings.emailNotificationsDesc') },
+                  { key: 'uploadNotifications', label: t('settings.uploadNotifications'), description: t('settings.uploadNotificationsDesc') },
+                  { key: 'errorNotifications', label: t('settings.errorNotifications'), description: t('settings.errorNotificationsDesc') },
+                  { key: 'weeklyReports', label: t('settings.weeklyReports'), description: t('settings.weeklyReportsDesc') },
+                  { key: 'securityAlerts', label: t('settings.securityAlerts'), description: t('settings.securityAlertsDesc') }
                 ].map(setting => (
                   <div key={setting.key} className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg">
                     <div>

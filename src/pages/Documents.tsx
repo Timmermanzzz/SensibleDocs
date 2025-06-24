@@ -14,6 +14,7 @@ import {
   Trash2
 } from 'lucide-react'
 import { useAuditLogger } from '../hooks/useAuditLogger'
+import { useLanguageStore } from '../store/languageStore'
 import toast from 'react-hot-toast'
 
 interface Document {
@@ -29,6 +30,7 @@ interface Document {
 
 const Documents = () => {
   const { logPageVisit, logDownloadRequested, logEvent } = useAuditLogger()
+  const { t } = useLanguageStore()
   const [documents, setDocuments] = useState<Document[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -147,21 +149,21 @@ const Documents = () => {
         return (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success">
             <CheckCircle className="w-3 h-3 mr-1" />
-            Voltooid
+            {t('upload.completed')}
           </span>
         )
       case 'processing':
         return (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-warning/10 text-warning">
             <div className="w-3 h-3 mr-1 border border-warning border-t-transparent rounded-full animate-spin" />
-            Verwerken
+            {t('documents.processing')}
           </span>
         )
       case 'error':
         return (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-error/10 text-error">
             <AlertTriangle className="w-3 h-3 mr-1" />
-            Fout
+            {t('documents.error')}
           </span>
         )
     }
@@ -197,7 +199,7 @@ const Documents = () => {
 
   const handleDocumentDownload = (documentId: string, documentName: string) => {
     logDownloadRequested(documentId, 'anonymized')
-    toast.success(`Download gestart voor ${documentName}`)
+    toast.success(`${t('documents.downloadStarted')} ${documentName}`)
   }
 
   const handleSearch = (term: string) => {
@@ -262,10 +264,10 @@ const Documents = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-neutral-900 mb-2">
-              Alle Documenten
+              {t('documents.title')}
             </h1>
             <p className="text-neutral-600">
-              Overzicht van alle verwerkte documenten en hun anonimisatiestatus
+              {t('documents.subtitle')}
             </p>
           </div>
           <div className="text-right">
@@ -273,7 +275,7 @@ const Documents = () => {
               {documents.length}
             </div>
             <div className="text-sm text-neutral-500">
-              Totaal documenten
+              {t('documents.totalDocuments')}
             </div>
           </div>
         </div>
@@ -287,7 +289,7 @@ const Documents = () => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 w-4 h-4" />
             <input
               type="text"
-              placeholder="Zoek op documentnaam of gebruiker..."
+              placeholder={t('documents.searchPlaceholder')}
               value={searchTerm}
               onChange={(e) => handleSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
@@ -302,27 +304,27 @@ const Documents = () => {
               onChange={(e) => handleFilterChange('status', e.target.value)}
               className="border border-neutral-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-transparent"
             >
-              <option value="all">Alle statussen</option>
-              <option value="completed">Voltooid</option>
-              <option value="processing">Verwerken</option>
-              <option value="error">Fout</option>
+              <option value="all">{t('documents.allStatuses')}</option>
+              <option value="completed">{t('documents.completed')}</option>
+              <option value="processing">{t('documents.processing')}</option>
+              <option value="error">{t('documents.error')}</option>
             </select>
           </div>
 
           {/* Sort */}
           <div className="flex items-center space-x-2">
-            <span className="text-sm text-neutral-600">Sorteer op:</span>
+            <span className="text-sm text-neutral-600">{t('common.sort')}:</span>
             <select
               value={`${sortBy}-${sortOrder}`}
               onChange={(e) => handleSortChange(e.target.value)}
               className="border border-neutral-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-transparent"
             >
-              <option value="date-desc">Datum (nieuw eerst)</option>
-              <option value="date-asc">Datum (oud eerst)</option>
-              <option value="name-asc">Naam (A-Z)</option>
-              <option value="name-desc">Naam (Z-A)</option>
-              <option value="pii-desc">PII items (hoog-laag)</option>
-              <option value="pii-asc">PII items (laag-hoog)</option>
+              <option value="date-desc">{t('documents.dateNewest')}</option>
+              <option value="date-asc">{t('documents.dateOldest')}</option>
+              <option value="name-asc">{t('common.name')} (A-Z)</option>
+              <option value="name-desc">{t('common.name')} (Z-A)</option>
+              <option value="pii-desc">PII {t('documents.items')} (hoog-laag)</option>
+              <option value="pii-asc">PII {t('documents.items')} (laag-hoog)</option>
             </select>
           </div>
         </div>
@@ -335,22 +337,22 @@ const Documents = () => {
             <thead className="bg-neutral-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Document
+                  {t('documents.document')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Status
+                  {t('documents.status')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  PII Gevonden
+                  {t('documents.piiFound')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Verwerkt door
+                  {t('documents.processedBy')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Datum
+                  {t('documents.date')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Acties
+                  {t('documents.actions')}
                 </th>
               </tr>
             </thead>
@@ -409,7 +411,7 @@ const Documents = () => {
                       <Link
                         to={`/document/${doc.id}`}
                         className="text-primary hover:text-primary/80 p-1 rounded"
-                        title="Bekijken"
+                        title={t('documents.viewDocument')}
                         onClick={() => handleDocumentView(doc.id, doc.name)}
                       >
                         <Eye className="w-4 h-4" />
@@ -417,7 +419,7 @@ const Documents = () => {
                       {doc.status === 'completed' && (
                         <button
                           className="text-success hover:text-success/80 p-1 rounded"
-                          title="Downloaden"
+                          title={t('common.download')}
                           onClick={() => handleDocumentDownload(doc.id, doc.name)}
                         >
                           <Download className="w-4 h-4" />
@@ -425,7 +427,7 @@ const Documents = () => {
                       )}
                       <button
                         className="text-neutral-400 hover:text-neutral-600 p-1 rounded"
-                        title="Meer opties"
+                        title={t('projects.moreOptions')}
                       >
                         <MoreVertical className="w-4 h-4" />
                       </button>
@@ -441,12 +443,12 @@ const Documents = () => {
           <div className="text-center py-12">
             <FileText className="w-12 h-12 text-neutral-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-neutral-900 mb-2">
-              Geen documenten gevonden
+              {t('documents.noDocumentsFound')}
             </h3>
             <p className="text-neutral-600">
               {searchTerm || statusFilter !== 'all' 
-                ? 'Probeer je zoekopdracht of filters aan te passen.'
-                : 'Upload je eerste document om aan de slag te gaan.'
+                ? t('documents.adjustFilters')
+                : t('documents.uploadFirstDocument')
               }
             </p>
           </div>

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuditLogger } from '../hooks/useAuditLogger'
+import { useLanguageStore } from '../store/languageStore'
 import { useEffect } from 'react'
 
 interface UploadedFile {
@@ -25,6 +26,7 @@ interface UploadedFile {
 
 const DocumentUpload = () => {
   const { logPageVisit, logUploadStarted, logUploadCompleted, logProfileSelected, logMaskingRequested } = useAuditLogger()
+  const { t } = useLanguageStore()
   const [searchParams] = useSearchParams()
   const [files, setFiles] = useState<UploadedFile[]>([])
   const [selectedProfile, setSelectedProfile] = useState('default')
@@ -74,18 +76,23 @@ const DocumentUpload = () => {
   const profiles = [
     {
       id: 'default',
-      name: 'Standaard WOO-profiel',
-      description: 'Detecteert alle standaard PII volgens WOO-wetgeving'
+      name: t('upload.standardProfile'),
+      description: t('upload.standardDesc')
     },
     {
       id: 'strict',
-      name: 'Strict profiel',
-      description: 'Extra voorzichtig, detecteert ook potentieel gevoelige informatie'
+      name: t('upload.strictProfile'),
+      description: t('upload.strictDesc')
     },
     {
       id: 'minimal',
-      name: 'Minimaal profiel',
-      description: 'Alleen direct identificeerbare persoonlijke gegevens'
+      name: t('upload.minimalProfile'),
+      description: t('upload.minimalDesc')
+    },
+    {
+      id: 'full-anonymization',
+      name: t('upload.fullAnonymization'),
+      description: t('upload.fullAnonDesc')
     }
   ]
 
@@ -120,9 +127,9 @@ const DocumentUpload = () => {
       rejectedFiles.forEach(({ file, errors }) => {
         errors.forEach(error => {
           if (error.code === 'file-too-large') {
-            toast.error(`${file.name} is te groot (max 50MB)`)
+            toast.error(`${file.name} ${t('upload.fileTooLarge')}`)
           } else if (error.code === 'file-invalid-type') {
-            toast.error(`${file.name} heeft een ongeldig bestandstype`)
+            toast.error(`${file.name} ${t('upload.invalidFileType')}`)
           }
         })
       })
@@ -131,6 +138,101 @@ const DocumentUpload = () => {
 
   const removeFile = (id: string) => {
     setFiles(prev => prev.filter(file => file.id !== id))
+  }
+
+  // Helper function to convert file to base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => {
+        const base64 = (reader.result as string).split(',')[1]
+        resolve(base64)
+      }
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+  }
+
+  // Helper function to get content type
+  const getContentType = (file: File): string => {
+    const extension = file.name.toLowerCase().split('.').pop()
+    const mimeTypes: Record<string, string> = {
+      'pdf': 'application/pdf',
+      'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'doc': 'application/msword',
+      'txt': 'text/plain'
+    }
+    return mimeTypes[extension || ''] || file.type || 'application/octet-stream'
+  }
+
+  // Private AI full anonymization
+  const processWithPrivateAI = async (file: File): Promise<void> => {
+    try {
+      // Convert file to base64
+      const fileData = await fileToBase64(file)
+      const contentType = getContentType(file)
+
+      // Call Private AI API
+      const response = await fetch('/api/anonymize-document', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          fileData,
+          contentType,
+          options: {
+            accuracy: 'high',
+            redactionType: 'marker'
+          }
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'API fout bij anonimisering')
+      }
+
+      const result = await response.json()
+
+      if (result.success) {
+        // Create download link for anonymized document
+        const anonymizedData = result.processed_file
+        const byteCharacters = atob(anonymizedData)
+        const byteNumbers = new Array(byteCharacters.length)
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i)
+        }
+        const byteArray = new Uint8Array(byteNumbers)
+        const blob = new Blob([byteArray], { type: contentType })
+
+        // Auto-download the anonymized document
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `anoniem_${file.name}`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+
+        // Show success message
+        toast.success(
+          `${file.name} volledig geanonimiseerd! ${result.stats?.entities_found || 0} PII items vervangen.`,
+          { 
+            duration: 4000,
+            icon: '🛡️'
+          }
+        )
+
+      } else {
+        throw new Error('Anonimisering mislukt')
+      }
+
+    } catch (error: any) {
+      console.error('Private AI error:', error)
+      throw new Error(`Fout bij anonimisering: ${error.message}`)
+    }
   }
 
   const processFiles = async () => {
@@ -142,7 +244,6 @@ const DocumentUpload = () => {
     setIsProcessing(true)
 
     try {
-      // Simulate file processing
       for (const file of files) {
         setFiles(prev => prev.map(f => 
           f.id === file.id 
@@ -150,47 +251,76 @@ const DocumentUpload = () => {
             : f
         ))
 
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        // Check if full anonymization profile is selected
+        if (selectedProfile === 'full-anonymization') {
+          setFiles(prev => prev.map(f => 
+            f.id === file.id 
+              ? { ...f, status: 'processing', progress: 50 }
+              : f
+          ))
 
-        setFiles(prev => prev.map(f => 
-          f.id === file.id 
-            ? { ...f, status: 'processing', progress: 75 }
-            : f
-        ))
+          // Process with Private AI
+          await processWithPrivateAI(file.file)
+          
+          setFiles(prev => prev.map(f => 
+            f.id === file.id 
+              ? { 
+                  ...f, 
+                  status: 'completed', 
+                  progress: 100,
+                  piiFound: 0 // Will be updated from API response
+                }
+              : f
+          ))
 
-        await new Promise(resolve => setTimeout(resolve, 2000))
+        } else {
+          // Regular processing (mock)
+          await new Promise(resolve => setTimeout(resolve, 1000))
 
-        // Mock AI processing result
-        const piiFound = Math.floor(Math.random() * 20)
-        
-        setFiles(prev => prev.map(f => 
-          f.id === file.id 
-            ? { 
-                ...f, 
-                status: 'completed', 
-                progress: 100,
-                piiFound 
-              }
-            : f
-        ))
+          setFiles(prev => prev.map(f => 
+            f.id === file.id 
+              ? { ...f, status: 'processing', progress: 75 }
+              : f
+          ))
+
+          await new Promise(resolve => setTimeout(resolve, 2000))
+
+          // Mock AI processing result
+          const piiFound = Math.floor(Math.random() * 20)
+          
+          setFiles(prev => prev.map(f => 
+            f.id === file.id 
+              ? { 
+                  ...f, 
+                  status: 'completed', 
+                  progress: 100,
+                  piiFound 
+                }
+              : f
+          ))
+        }
 
         // Log upload completion
         logUploadCompleted(file.id, file.file.name)
       }
 
-      toast.success('Alle documenten zijn succesvol verwerkt!')
-      setTimeout(() => {
-        navigate('/documents')
-      }, 2000)
+      if (selectedProfile === 'full-anonymization') {
+        toast.success('Alle documenten zijn volledig geanonimiseerd en gedownload!')
+      } else {
+        toast.success('Alle documenten zijn succesvol verwerkt!')
+        setTimeout(() => {
+          navigate('/documents')
+        }, 2000)
+      }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Processing error:', error)
-      toast.error('Er is een fout opgetreden bij het verwerken')
+      toast.error(`Er is een fout opgetreden: ${error.message}`)
       
       setFiles(prev => prev.map(f => ({
         ...f,
         status: 'error',
-        errorMessage: 'Verwerking mislukt'
+        errorMessage: error.message || 'Verwerking mislukt'
       })))
     } finally {
       setIsProcessing(false)
@@ -214,15 +344,15 @@ const DocumentUpload = () => {
   const getStatusText = (file: UploadedFile) => {
     switch (file.status) {
       case 'pending':
-        return 'Klaar voor verwerking'
+        return t('upload.readyForProcessing')
       case 'uploading':
-        return 'Uploaden...'
+        return t('upload.uploading')
       case 'processing':
-        return 'AI verwerkt document...'
+        return selectedProfile === 'full-anonymization' ? t('upload.documentAnonymizing') : t('upload.aiProcessing')
       case 'completed':
-        return `Voltooid - ${file.piiFound} PII items gevonden`
+        return selectedProfile === 'full-anonymization' ? t('upload.fullyAnonymized') : `${t('upload.completed')} - ${file.piiFound} ${t('upload.piiItemsFound')}`
       case 'error':
-        return file.errorMessage || 'Fout opgetreden'
+        return file.errorMessage || t('upload.errorOccurred')
     }
   }
 
@@ -234,7 +364,7 @@ const DocumentUpload = () => {
           <div className="mb-4 p-4 bg-primary/5 border border-primary/20 rounded-lg">
             <div className="flex items-center mb-2">
               <FileText className="w-5 h-5 text-primary mr-2" />
-              <span className="text-sm font-medium text-primary">Uploaden naar project:</span>
+              <span className="text-sm font-medium text-primary">{t('upload.uploadingTo')}</span>
             </div>
             <h2 className="text-lg font-semibold text-neutral-900 mb-1">
               {selectedProject.name}
@@ -246,12 +376,8 @@ const DocumentUpload = () => {
         ) : null}
         
         <h1 className="text-2xl font-bold text-neutral-900 mb-2">
-          {selectedProject ? 'Documenten toevoegen aan project' : 'Document uploaden'}
+          {selectedProject ? t('upload.addToProject') : t('upload.title')}
         </h1>
-        <p className="text-neutral-600">
-          Upload documenten om ze automatisch te anonimiseren volgens WOO-wetgeving. 
-          Ondersteunde formaten: PDF, Word, Tekst (max 50MB per bestand).
-        </p>
       </div>
 
       {/* Profile selection */}
@@ -259,7 +385,7 @@ const DocumentUpload = () => {
         <div className="flex items-center mb-4">
           <Settings className="w-5 h-5 text-neutral-600 mr-2" />
           <h2 className="text-lg font-semibold text-neutral-900">
-            Anonimisatieprofiel
+            {t('upload.anonymizationProfile')}
           </h2>
         </div>
         
@@ -311,15 +437,15 @@ const DocumentUpload = () => {
           
           {isDragActive ? (
             <p className="text-lg text-primary font-medium">
-              Laat bestanden hier vallen...
+              {t('upload.dropFiles')}
             </p>
           ) : (
             <div>
               <p className="text-lg font-medium text-neutral-900 mb-2">
-                Sleep bestanden hierheen of klik om te selecteren
+                {t('upload.dragFiles')}
               </p>
               <p className="text-neutral-600">
-                PDF, Word, of Tekstbestanden (max 50MB)
+                {t('upload.supportedFormats')}
               </p>
             </div>
           )}
@@ -332,7 +458,7 @@ const DocumentUpload = () => {
           <div className="px-6 py-4 border-b border-neutral-200">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-neutral-900">
-                Geselecteerde bestanden ({files.length})
+                {t('upload.selectedFiles')} ({files.length})
               </h2>
               <button
                 onClick={processFiles}
@@ -340,7 +466,7 @@ const DocumentUpload = () => {
                 className="btn btn-primary disabled:opacity-50"
               >
                 <Play className="w-4 h-4 mr-2" />
-                {isProcessing ? 'Verwerken...' : 'Start verwerking'}
+                {isProcessing ? t('upload.processing') : t('upload.startProcessing')}
               </button>
             </div>
           </div>

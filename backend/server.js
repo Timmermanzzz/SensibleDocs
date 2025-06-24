@@ -176,6 +176,75 @@ app.get('/api/status', (req, res) => {
   })
 })
 
+// Private AI Document Anonymization
+app.post('/api/anonymize-document', async (req, res) => {
+  try {
+    const { fileData, contentType, options = {} } = req.body
+
+    // Validatie
+    if (!fileData || !contentType) {
+      return res.status(400).json({ 
+        error: 'fileData en contentType zijn verplicht' 
+      })
+    }
+
+    // Bereid payload voor Private AI API (minimale structuur)
+    const payload = {
+      file: {
+        data: fileData,
+        content_type: contentType
+      }
+    }
+
+    logger.info(`📄 Processing document anonymization: ${contentType}`)
+    const startTime = Date.now()
+
+    // Call Private AI API
+    const privateAIResponse = await fetch('https://api.private-ai.com/community/v4/process/files/base64', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': '57271f9a4cdf47ada3b3848942be0fd9'
+      },
+      body: JSON.stringify(payload)
+    })
+
+    const processingTime = Date.now() - startTime
+
+    if (!privateAIResponse.ok) {
+      const errorText = await privateAIResponse.text()
+      logger.error(`❌ Private AI Error: ${privateAIResponse.status} - ${errorText}`)
+      return res.status(500).json({ 
+        error: `Private AI service error: ${errorText}` 
+      })
+    }
+
+    const result = await privateAIResponse.json()
+    
+    logger.info(`✅ Document anonymization completed in ${processingTime}ms`)
+    logger.info(`📊 Found ${result.entities?.length || 0} PII entities`)
+
+    // Return result
+    res.json({
+      success: true,
+      processed_file: result.processed_file,
+      entities: result.entities || [],
+      processing_time: processingTime,
+      stats: {
+        entities_found: result.entities?.length || 0,
+        api_processing_time: result.processing_time
+      }
+    })
+
+  } catch (error) {
+    logger.error('❌ Document anonymization error:', error)
+    res.status(500).json({ 
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    })
+  }
+})
+
 // Document upload and processing
 app.post('/api/documents/upload', upload.single('document'), async (req, res) => {
   try {

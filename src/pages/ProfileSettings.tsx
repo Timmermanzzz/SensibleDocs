@@ -24,6 +24,7 @@ import {
   Building
 } from 'lucide-react'
 import { useAuditLogger } from '../hooks/useAuditLogger'
+import { useLanguageStore } from '../store/languageStore'
 import toast from 'react-hot-toast'
 
 interface PIISubcategory {
@@ -397,6 +398,7 @@ const defaultPIICategories: PIICategory[] = [
 
 const ProfileSettings = () => {
   const { logPageVisit, logEvent } = useAuditLogger()
+  const { t } = useLanguageStore()
   const [profiles, setProfiles] = useState<Profile[]>([
     {
       id: '1',
@@ -452,7 +454,7 @@ const ProfileSettings = () => {
 
   const handleCreateProfile = () => {
     if (!newProfile.name || !newProfile.description) {
-      toast.error('Naam en beschrijving zijn verplicht')
+      toast.error(t('profiles.nameRequired'))
       return
     }
 
@@ -493,7 +495,7 @@ const ProfileSettings = () => {
       details: { profileName: profile.name, profileId: profile.id }
     })
 
-    toast.success(`Profiel "${profile.name}" aangemaakt`)
+    toast.success(`${t('profiles.profileCreated')} "${profile.name}"`)
   }
 
   const handleEditProfile = (profile: Profile) => {
@@ -516,12 +518,12 @@ const ProfileSettings = () => {
     })
 
     setEditingProfile(null)
-    toast.success(`Profiel "${editingProfile.name}" opgeslagen`)
+    toast.success(`${t('profiles.profileSaved')} "${editingProfile.name}"`)
   }
 
   const handleDeleteProfile = (profile: Profile) => {
     if (profile.isDefault) {
-      toast.error('Standaardprofiel kan niet worden verwijderd')
+      toast.error(t('profiles.defaultCannotDelete'))
       return
     }
 
@@ -533,14 +535,14 @@ const ProfileSettings = () => {
       details: { profileName: profile.name, profileId: profile.id }
     })
 
-    toast.success(`Profiel "${profile.name}" verwijderd`)
+    toast.success(`${t('profiles.profileDeleted')} "${profile.name}"`)
   }
 
   const handleDuplicateProfile = (profile: Profile) => {
     const duplicatedProfile: Profile = {
       ...profile,
       id: Date.now().toString(),
-      name: `${profile.name} (kopie)`,
+      name: `${profile.name} (${t('profiles.copy')})`,
       isDefault: false,
       createdAt: new Date().toISOString(),
       lastModified: new Date().toISOString()
@@ -558,7 +560,7 @@ const ProfileSettings = () => {
       }
     })
 
-    toast.success(`Profiel gekopieerd als "${duplicatedProfile.name}"`)
+    toast.success(`${t('profiles.profileCopied')} "${duplicatedProfile.name}"`)
   }
 
   const handleSetDefault = (profileId: string) => {
@@ -575,7 +577,7 @@ const ProfileSettings = () => {
         details: { profileName: profile.name, profileId }
       })
 
-      toast.success(`"${profile.name}" ingesteld als standaardprofiel`)
+      toast.success(`"${profile.name}" ${t('profiles.profileSetAsDefault')}`)
     }
   }
 
@@ -601,10 +603,10 @@ const ProfileSettings = () => {
 
   const getSensitivityLabel = (sensitivity: string) => {
     switch (sensitivity) {
-      case 'high': return 'Hoog'
-      case 'medium': return 'Gemiddeld'
-      case 'low': return 'Laag'
-      default: return 'Onbekend'
+      case 'high': return t('profiles.high')
+      case 'medium': return t('profiles.medium')
+      case 'low': return t('profiles.low')
+      default: return t('profiles.unknown')
     }
   }
 
@@ -613,10 +615,10 @@ const ProfileSettings = () => {
       {/* Header */}
       <div className="card p-6">
         <h1 className="text-2xl font-bold text-neutral-900 mb-2">
-          Profielinstellingen
+          {t('profiles.title')}
         </h1>
         <p className="text-neutral-600">
-          Beheer uw anonimisatieprofielen en PII-detectie instellingen voor optimale WOO-compliance.
+          {t('profiles.subtitle')}
         </p>
       </div>
 
@@ -625,14 +627,14 @@ const ProfileSettings = () => {
         <div className="px-6 py-4 border-b border-neutral-200">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-neutral-900">
-              Anonimisatieprofielen ({profiles.length})
+              {t('profiles.anonymizationProfiles')} ({profiles.length})
             </h2>
             <button 
               className="btn btn-primary"
               onClick={() => setShowCreateModal(true)}
             >
               <Plus className="w-4 h-4 mr-2" />
-              Nieuw profiel
+              {t('profiles.newProfile')}
             </button>
           </div>
         </div>
@@ -649,11 +651,11 @@ const ProfileSettings = () => {
                     {profile.isDefault && (
                       <span className="badge-success mr-2">
                         <Star className="w-3 h-3 mr-1" />
-                        Standaard
+                        {t('profiles.standard')}
                       </span>
                     )}
                     <span className={`badge-${profile.isActive ? 'success' : 'neutral'}`}>
-                      {profile.isActive ? 'Actief' : 'Inactief'}
+                      {profile.isActive ? t('profiles.active') : t('profiles.inactive')}
                     </span>
                   </div>
                   <p className="text-sm text-neutral-600 mb-3">
@@ -664,14 +666,14 @@ const ProfileSettings = () => {
                   <div className="flex items-center space-x-4 text-xs text-neutral-500">
                     <span className="flex items-center">
                       <Shield className="w-3 h-3 mr-1" />
-                      {profile.piiCategories.filter(cat => cat.enabled).length} van {profile.piiCategories.length} categorieën
+                      {profile.piiCategories.filter(cat => cat.enabled).length} van {profile.piiCategories.length} {t('profiles.categories')}
                     </span>
                     <span className="flex items-center">
                       <Eye className="w-3 h-3 mr-1" />
-                      {Math.round(profile.settings.confidenceThreshold * 100)}% drempel
+                      {Math.round(profile.settings.confidenceThreshold * 100)}% {t('profiles.threshold')}
                     </span>
                     <span>
-                      Gewijzigd: {new Date(profile.lastModified).toLocaleDateString('nl-NL')}
+                      {t('profiles.modified')}: {new Date(profile.lastModified).toLocaleDateString('nl-NL')}
                     </span>
                   </div>
                 </div>
@@ -736,27 +738,27 @@ const ProfileSettings = () => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-2">
-                    Profielnaam
+                    {t('profiles.profileName')}
                   </label>
                   <input
                     type="text"
                     value={newProfile.name || ''}
                     onChange={(e) => setNewProfile(prev => ({ ...prev, name: e.target.value }))}
                     className="input"
-                    placeholder="Bijv. Streng WOO-profiel"
+                    placeholder={t('profiles.profileNamePlaceholder')}
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-2">
-                    Beschrijving
+                    {t('profiles.description')}
                   </label>
                   <textarea
                     value={newProfile.description || ''}
                     onChange={(e) => setNewProfile(prev => ({ ...prev, description: e.target.value }))}
                     className="input"
                     rows={3}
-                    placeholder="Beschrijf wanneer dit profiel gebruikt moet worden..."
+                    placeholder={t('profiles.descriptionPlaceholder')}
                   />
                 </div>
 
@@ -792,14 +794,14 @@ const ProfileSettings = () => {
                   onClick={() => setShowCreateModal(false)}
                   className="btn btn-ghost"
                 >
-                  Annuleren
+                  {t('profiles.cancel')}
                 </button>
                 <button
                   onClick={handleCreateProfile}
                   className="btn btn-primary"
                 >
                   <Save className="w-4 h-4 mr-2" />
-                  Profiel aanmaken
+                  {t('profiles.createProfile')}
                 </button>
               </div>
             </div>

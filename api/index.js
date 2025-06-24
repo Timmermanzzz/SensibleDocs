@@ -192,6 +192,85 @@ const mockProjects = [
 
 // API Routes
 
+// Private AI Document Anonymization
+app.post('/api/anonymize-document', async (req, res) => {
+  try {
+    const { fileData, contentType, options = {} } = req.body
+
+    // Validatie
+    if (!fileData || !contentType) {
+      return res.status(400).json({ 
+        error: 'fileData en contentType zijn verplicht' 
+      })
+    }
+
+    // Bereid payload voor Private AI API
+    const payload = {
+      file: {
+        data: fileData,
+        content_type: contentType
+      },
+      processing_options: {
+        entity_detection: {
+          accuracy: options.accuracy || 'standard',
+          return_entity: true
+        },
+        redaction: {
+          redaction_type: options.redactionType || 'marker',
+          redact_with: options.redactWith || '[GEANONIMISEERD]'
+        }
+      }
+    }
+
+    logger.info(`📄 Processing document anonymization: ${contentType}`)
+    const startTime = Date.now()
+
+    // Call Private AI API
+    const privateAIResponse = await fetch('https://api.private-ai.com/community/v4/process/files/base64', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': '57271f9a4cdf47ada3b3848942be0fd9'
+      },
+      body: JSON.stringify(payload)
+    })
+
+    const processingTime = Date.now() - startTime
+
+    if (!privateAIResponse.ok) {
+      const errorText = await privateAIResponse.text()
+      logger.error(`❌ Private AI Error: ${privateAIResponse.status} - ${errorText}`)
+      return res.status(500).json({ 
+        error: `Private AI service error: ${errorText}` 
+      })
+    }
+
+    const result = await privateAIResponse.json()
+    
+    logger.info(`✅ Document anonymization completed in ${processingTime}ms`)
+    logger.info(`📊 Found ${result.entities?.length || 0} PII entities`)
+
+    // Return result
+    res.json({
+      success: true,
+      processed_file: result.processed_file,
+      entities: result.entities || [],
+      processing_time: processingTime,
+      stats: {
+        entities_found: result.entities?.length || 0,
+        api_processing_time: result.processing_time
+      }
+    })
+
+  } catch (error) {
+    logger.error('❌ Document anonymization error:', error)
+    res.status(500).json({ 
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    })
+  }
+})
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ 
@@ -222,7 +301,37 @@ app.post('/api/audit/log', async (req, res) => {
   }
 })
 
-// Get audit events
+// Get audit events (both routes for compatibility)
+app.get('/api/audit', async (req, res) => {
+  try {
+    const { userId, eventType, startDate, endDate, page = 1, limit = 50 } = req.query
+    
+    const events = await auditService.getEvents({
+      userId,
+      eventType,
+      startDate,
+      endDate
+    })
+    
+    const startIndex = (parseInt(page) - 1) * parseInt(limit)
+    const endIndex = startIndex + parseInt(limit)
+    const paginatedEvents = events.slice(startIndex, endIndex)
+    
+    res.json({
+      events: paginatedEvents,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: events.length,
+        pages: Math.ceil(events.length / parseInt(limit))
+      }
+    })
+  } catch (error) {
+    logger.error('Get audit events error:', error)
+    res.status(500).json({ error: 'Fout bij het ophalen van audit events' })
+  }
+})
+
 app.get('/api/audit/events', async (req, res) => {
   try {
     const { userId, eventType, startDate, endDate, page = 1, limit = 50 } = req.query
@@ -250,6 +359,46 @@ app.get('/api/audit/events', async (req, res) => {
   } catch (error) {
     logger.error('Get audit events error:', error)
     res.status(500).json({ error: 'Fout bij het ophalen van audit events' })
+  }
+})
+
+// Audit export endpoint
+app.get('/api/audit/export', async (req, res) => {
+  try {
+    const { userId, eventType, startDate, endDate } = req.query
+    
+    const events = await auditService.getEvents({
+      userId,
+      eventType,
+      startDate,
+      endDate
+    })
+    
+    res.setHeader('Content-Type', 'application/json')
+    res.setHeader('Content-Disposition', 'attachment; filename=audit-log.json')
+    res.json(events)
+  } catch (error) {
+    logger.error('Audit export error:', error)
+    res.status(500).json({ error: 'Fout bij het exporteren van audit log' })
+  }
+})
+
+// Audit verify endpoint
+app.get('/api/audit/verify', async (req, res) => {
+  try {
+    const { userRole } = req.query
+    
+    // Mock verification based on role
+    const canVerify = ['admin', 'woo_officer'].includes(userRole)
+    
+    res.json({
+      canVerify,
+      verificationStatus: canVerify ? 'authorized' : 'unauthorized',
+      message: canVerify ? 'Gebruiker geautoriseerd voor audit verificatie' : 'Onvoldoende rechten'
+    })
+  } catch (error) {
+    logger.error('Audit verify error:', error)
+    res.status(500).json({ error: 'Fout bij audit verificatie' })
   }
 })
 

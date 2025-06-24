@@ -125,3 +125,4 @@ storybook-static/
 # Project specific
 /mock-ai/*
 !mock-ai/README.md 
+.vercel

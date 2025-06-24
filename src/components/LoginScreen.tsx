@@ -180,11 +180,11 @@ const LoginScreen = ({ onLoginComplete }: LoginScreenProps) => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-white to-secondary/10 flex items-center justify-center">
-      <div className="bg-white rounded-2xl shadow-2xl overflow-hidden w-full max-w-4xl mx-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-white to-secondary/10 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl overflow-hidden w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-4xl">
         <div className="flex">
           {/* Left Panel - Branding */}
-          <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary to-primary/80 p-12 flex-col justify-between text-white">
+          <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary to-primary/80 p-6 xl:p-12 flex-col justify-between text-white">
             <div>
               <div className="flex items-center mb-8">
                 <Shield className="w-10 h-10 mr-3" />
@@ -239,8 +239,8 @@ const LoginScreen = ({ onLoginComplete }: LoginScreenProps) => {
           </div>
 
           {/* Right Panel - Login Form */}
-          <div className="w-full lg:w-1/2 p-12">
-            <div className="lg:hidden flex items-center justify-center mb-8">
+          <div className="w-full lg:w-1/2 p-6 sm:p-8 lg:p-10 xl:p-12">
+            <div className="lg:hidden flex items-center justify-center mb-6">
               <Shield className="w-8 h-8 text-primary mr-3" />
               <div>
                 <h1 className="text-xl font-bold text-neutral-900">Sensible Docs</h1>
@@ -248,27 +248,27 @@ const LoginScreen = ({ onLoginComplete }: LoginScreenProps) => {
               </div>
             </div>
 
-            <div className="mb-8">
-              <h2 className="text-2xl font-bold text-neutral-900 mb-2">
+            <div className="mb-6 lg:mb-8">
+              <h2 className="text-xl lg:text-2xl font-bold text-neutral-900 mb-2">
                 Welkom terug
               </h2>
-              <p className="text-neutral-600">
+              <p className="text-neutral-600 text-sm lg:text-base">
                 Log in om toegang te krijgen tot het anonimisatieplatform
               </p>
             </div>
 
-            <form onSubmit={handleLogin} className="space-y-6">
+            <form onSubmit={handleLogin} className="space-y-4 lg:space-y-6">
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-2">
                   Gebruikersnaam
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400" />
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 lg:w-5 lg:h-5 text-neutral-400" />
                   <input
                     type="text"
                     value={credentials.username}
                     onChange={(e) => setCredentials(prev => ({ ...prev, username: e.target.value }))}
-                    className="w-full pl-10 pr-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                    className="w-full pl-9 lg:pl-10 pr-4 py-2.5 lg:py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-sm lg:text-base"
                     placeholder="Voer uw gebruikersnaam in"
                   />
                 </div>
@@ -279,12 +279,12 @@ const LoginScreen = ({ onLoginComplete }: LoginScreenProps) => {
                   Wachtwoord
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400" />
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 lg:w-5 lg:h-5 text-neutral-400" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={credentials.password}
                     onChange={(e) => setCredentials(prev => ({ ...prev, password: e.target.value }))}
-                    className="w-full pl-10 pr-12 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                    className="w-full pl-9 lg:pl-10 pr-10 lg:pr-12 py-2.5 lg:py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-sm lg:text-base"
                     placeholder="Voer uw wachtwoord in"
                   />
                   <button
@@ -292,7 +292,7 @@ const LoginScreen = ({ onLoginComplete }: LoginScreenProps) => {
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
                   >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    {showPassword ? <EyeOff className="w-4 h-4 lg:w-5 lg:h-5" /> : <Eye className="w-4 h-4 lg:w-5 lg:h-5" />}
                   </button>
                 </div>
               </div>
@@ -300,7 +300,7 @@ const LoginScreen = ({ onLoginComplete }: LoginScreenProps) => {
               <button
                 type="submit"
                 disabled={!credentials.username || !credentials.password}
-                className="w-full bg-primary text-white py-3 px-4 rounded-lg font-medium hover:bg-primary/90 focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-primary text-white py-2.5 lg:py-3 px-4 rounded-lg font-medium hover:bg-primary/90 focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm lg:text-base"
               >
                 Inloggen
               </button>

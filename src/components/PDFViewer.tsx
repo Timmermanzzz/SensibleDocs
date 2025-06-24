@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { Document, Page, pdfjs } from 'react-pdf'
 import { ZoomIn, ZoomOut, RotateCw, Download, Eye, EyeOff } from 'lucide-react'
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css'
@@ -55,6 +55,10 @@ const PDFViewer = ({
   const [scale, setScale] = useState<number>(1.0)
   const [rotation, setRotation] = useState<number>(0)
   const [isLoading, setIsLoading] = useState<boolean>(true)
+  const [pageSize, setPageSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 })
+  const [textLayerItems, setTextLayerItems] = useState<any[]>([])
+  const [detectedPositions, setDetectedPositions] = useState<Map<string, any>>(new Map())
+  const pageRef = useRef<HTMLDivElement>(null)
 
   const onDocumentLoadSuccess = useCallback(({ numPages }: { numPages: number }) => {
     setNumPages(numPages)
@@ -65,6 +69,124 @@ const PDFViewer = ({
     console.error('PDF loading error:', error)
     setIsLoading(false)
   }, [])
+
+  // Handle page size updates and text extraction
+  const onPageLoadSuccess = useCallback(async (page: any) => {
+    const viewport = page.getViewport({ scale: 1, rotation: 0 })
+    setPageSize({ width: viewport.width, height: viewport.height })
+
+    try {
+      // Extract text content with positions
+      const textContent = await page.getTextContent()
+      setTextLayerItems(textContent.items || [])
+      
+      // Find positions for our PII highlights
+      const positions = new Map()
+      
+      highlights.forEach(highlight => {
+        if (highlight.position.page === currentPage) {
+          // Search for exact text match in textContent
+          const searchText = highlight.original.toLowerCase()
+          
+          for (let i = 0; i < textContent.items.length; i++) {
+            const item = textContent.items[i]
+            if (!item.str) continue
+            
+            const itemText = item.str.toLowerCase()
+            const index = itemText.indexOf(searchText)
+            
+            if (index !== -1) {
+              // Found the text within this item
+              const transform = item.transform
+              const fontSize = Math.abs(transform[0]) // Use absolute value for font size
+              
+              // More accurate character width calculation
+              const textWidth = item.width || (item.str.length > 0 ? item.str.length * fontSize * 0.55 : searchText.length * fontSize * 0.55)
+              const charWidth = textWidth / item.str.length
+              
+              // Calculate position offset for the found text
+              const textBeforeTarget = itemText.substring(0, index)
+              let offsetX = 0
+              
+              // More accurate offset calculation
+              if (textBeforeTarget.length > 0) {
+                offsetX = textBeforeTarget.length * charWidth
+              }
+              
+              const x = transform[4] + offsetX
+              const y = viewport.height - transform[5] // Flip Y coordinate
+              const width = searchText.length * charWidth
+              const height = fontSize
+              
+              positions.set(highlight.id, {
+                x: x,
+                y: y - height, // Adjust for text baseline
+                width: width,
+                height: height
+              })
+              break // Found it, stop searching
+            }
+          }
+          
+          // If not found in single items, try to find across multiple items
+          if (!positions.has(highlight.id)) {
+            let fullText = ''
+            let textItems = []
+            
+            // Build full text from consecutive items
+            for (let i = 0; i < textContent.items.length; i++) {
+              const item = textContent.items[i]
+              if (item.str) {
+                fullText += item.str
+                textItems.push({
+                  text: item.str,
+                  transform: item.transform,
+                  width: item.width || item.str.length * Math.abs(item.transform[0]) * 0.55,
+                  startIndex: fullText.length - item.str.length
+                })
+              }
+            }
+            
+            // Search in full text
+            const fullTextLower = fullText.toLowerCase()
+            const searchIndex = fullTextLower.indexOf(searchText)
+            
+            if (searchIndex !== -1) {
+              // Find which text item contains the start of our search text
+              for (const textItem of textItems) {
+                if (searchIndex >= textItem.startIndex && 
+                    searchIndex < textItem.startIndex + textItem.text.length) {
+                  
+                  const localIndex = searchIndex - textItem.startIndex
+                  const transform = textItem.transform
+                  const fontSize = Math.abs(transform[0])
+                  const charWidth = textItem.width / textItem.text.length
+                  
+                  const offsetX = localIndex * charWidth
+                  const x = transform[4] + offsetX
+                  const y = viewport.height - transform[5]
+                  const width = searchText.length * charWidth
+                  const height = fontSize
+                  
+                  positions.set(highlight.id, {
+                    x: x,
+                    y: y - height,
+                    width: width,
+                    height: height
+                  })
+                  break
+                }
+              }
+            }
+          }
+        }
+      })
+      
+      setDetectedPositions(positions)
+    } catch (error) {
+      console.warn('Could not extract text content:', error)
+    }
+  }, [highlights, currentPage])
 
   const handleZoomIn = () => setScale(prev => Math.min(prev + 0.2, 3.0))
   const handleZoomOut = () => setScale(prev => Math.max(prev - 0.2, 0.5))
@@ -92,6 +214,38 @@ const PDFViewer = ({
       other: approved ? '#6B7280' : '#EF4444'
     }
     return colors[type]
+  }
+
+  const getTypeLabel = (type: PIIHighlight['type']) => {
+    const labels = {
+      name: 'NAAM',
+      email: 'EMAIL',
+      phone: 'TEL',
+      address: 'ADRES',
+      bsn: 'BSN',
+      other: 'PII'
+    }
+    return labels[type]
+  }
+
+  // Get position from detected positions or fallback to manual
+  const getHighlightPosition = (highlight: PIIHighlight) => {
+    const detected = detectedPositions.get(highlight.id)
+    if (detected) {
+      return {
+        x: detected.x * scale,
+        y: detected.y * scale,
+        width: detected.width * scale,
+        height: detected.height * scale
+      }
+    }
+    // Fallback to manual coordinates
+    return {
+      x: highlight.position.x * scale,
+      y: highlight.position.y * scale,
+      width: highlight.position.width * scale,
+      height: highlight.position.height * scale
+    }
   }
 
   if (!file) {
@@ -122,6 +276,11 @@ const PDFViewer = ({
             {numPages > 0 && (
               <span className="text-xs text-neutral-500">
                 Pagina {currentPage} van {numPages}
+              </span>
+            )}
+            {detectedPositions.size > 0 && (
+              <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded">
+                {detectedPositions.size} posities gedetecteerd
               </span>
             )}
           </div>
@@ -216,7 +375,7 @@ const PDFViewer = ({
         )}
         
         <div className="flex justify-center p-4">
-          <div className="relative inline-block shadow-lg">
+          <div className="relative inline-block shadow-lg" ref={pageRef}>
             <Document
               file={file}
               onLoadSuccess={onDocumentLoadSuccess}
@@ -229,43 +388,79 @@ const PDFViewer = ({
                 rotate={rotation}
                 renderTextLayer={true}
                 renderAnnotationLayer={true}
+                onLoadSuccess={onPageLoadSuccess}
               />
             </Document>
             
-            {/* PII Highlights Overlay */}
-            {highlights
-              .filter(h => h.position.page === currentPage)
-              .map(highlight => (
-                <div
-                  key={highlight.id}
-                  className="absolute cursor-pointer transition-all duration-200 hover:shadow-lg"
-                  style={{
-                    left: `${highlight.position.x * scale}px`,
-                    top: `${highlight.position.y * scale}px`,
-                    width: `${highlight.position.width * scale}px`,
-                    height: `${highlight.position.height * scale}px`,
-                    backgroundColor: getHighlightColor(highlight.type, highlight.approved),
-                    border: `2px solid ${getBorderColor(highlight.type, highlight.approved)}`,
-                    borderRadius: '3px',
-                  }}
-                  onClick={() => onHighlightClick(highlight.id)}
-                  title={`${highlight.type.toUpperCase()}: ${showOriginal ? highlight.original : highlight.masked} (${Math.round(highlight.confidence * 100)}% zekerheid)`}
-                >
-                  {/* PII Type Badge */}
-                  <div 
-                    className="absolute -top-6 left-0 px-2 py-1 text-xs font-medium text-white rounded shadow-md"
-                    style={{ backgroundColor: getBorderColor(highlight.type, highlight.approved) }}
-                  >
-                    {highlight.type.toUpperCase()}
-                  </div>
-                  
-                  {/* Approval Status */}
-                  <div className="absolute -top-2 -right-2 w-4 h-4 rounded-full flex items-center justify-center text-white text-xs"
-                       style={{ backgroundColor: highlight.approved ? '#10B981' : '#EF4444' }}>
-                    {highlight.approved ? '✓' : '×'}
-                  </div>
-                </div>
-              ))}
+            {/* Smart PII Highlights Overlay */}
+            {pageSize.width > 0 && pageSize.height > 0 && (
+              <svg
+                className="absolute top-0 left-0 pointer-events-none"
+                width="100%"
+                height="100%"
+                style={{ 
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%'
+                }}
+              >
+                {highlights
+                  .filter(h => h.position.page === currentPage)
+                  .map(highlight => {
+                    const pos = getHighlightPosition(highlight)
+                    return (
+                      <g key={highlight.id}>
+                        {/* Main highlight rectangle */}
+                        <rect
+                          x={pos.x}
+                          y={pos.y}
+                          width={pos.width}
+                          height={pos.height}
+                          fill={getHighlightColor(highlight.type, highlight.approved)}
+                          stroke={getBorderColor(highlight.type, highlight.approved)}
+                          strokeWidth="2"
+                          rx="3"
+                          className="cursor-pointer pointer-events-auto transition-all duration-200 hover:stroke-4"
+                          onClick={() => onHighlightClick(highlight.id)}
+                        />
+                        
+                        {/* Approval status icon */}
+                        <circle
+                          cx={pos.x + pos.width - 8}
+                          cy={pos.y - 8}
+                          r="8"
+                          fill={highlight.approved ? '#10B981' : '#EF4444'}
+                          className="pointer-events-none"
+                        />
+                        <text
+                          x={pos.x + pos.width - 8}
+                          y={pos.y - 4}
+                          fontSize="10"
+                          fontWeight="bold"
+                          fill="white"
+                          textAnchor="middle"
+                          className="pointer-events-none select-none"
+                        >
+                          {highlight.approved ? '✓' : '×'}
+                        </text>
+                        
+                        {/* Detection status indicator */}
+                        {detectedPositions.has(highlight.id) && (
+                          <circle
+                            cx={pos.x - 10}
+                            cy={pos.y + pos.height / 2}
+                            r="4"
+                            fill="#10B981"
+                            className="pointer-events-none"
+                          />
+                        )}
+                      </g>
+                    )
+                  })}
+              </svg>
+            )}
           </div>
         </div>
         
@@ -275,6 +470,11 @@ const PDFViewer = ({
             <div className="flex items-center justify-between text-sm">
               <span className="text-neutral-600">
                 {highlights.filter(h => h.position.page === currentPage).length} PII items op deze pagina
+                {detectedPositions.size > 0 && (
+                  <span className="text-green-600 ml-2">
+                    ({detectedPositions.size} automatisch gedetecteerd)
+                  </span>
+                )}
               </span>
               <span className="text-neutral-500">
                 {showOriginal ? 'Originele versie' : 'Geanonimiseerde versie'}

@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 // import clsx from 'clsx' // Removed for now
 import { useUser } from '../store/userStore'
+import { useLanguageStore } from '../store/languageStore'
 
 interface LayoutProps {
   children: ReactNode
@@ -28,16 +29,17 @@ const Layout = ({ children, onLogout }: LayoutProps) => {
   const location = useLocation()
   const navigate = useNavigate()
   const { currentUser } = useUser()
+  const { t } = useLanguageStore()
   
   const navigation = [
-    { name: 'Dashboard', href: '/', icon: BarChart3 },
-    { name: 'Projecten', href: '/projects', icon: FolderOpen },
-    { name: 'Document uploaden', href: '/upload', icon: Upload },
-    { name: 'Alle documenten', href: '/documents', icon: FileText },
-    { name: 'Profielinstellingen', href: '/profiles', icon: User },
-    ...(currentUser?.role === 'admin' ? [{ name: 'Systeeminstellingen', href: '/settings', icon: Cog }] : []),
-    { name: 'Audit log', href: '/audit', icon: History },
-    { name: 'Rapporten', href: '/reports', icon: FileText },
+    { name: t('nav.dashboard'), href: '/', icon: BarChart3 },
+    { name: t('nav.projects'), href: '/projects', icon: FolderOpen },
+    { name: t('nav.upload'), href: '/upload', icon: Upload },
+    { name: t('nav.documents'), href: '/documents', icon: FileText },
+    { name: t('nav.profiles'), href: '/profiles', icon: User },
+    ...(currentUser?.role === 'admin' ? [{ name: t('nav.settings'), href: '/settings', icon: Cog }] : []),
+    { name: t('nav.audit'), href: '/audit', icon: History },
+    { name: t('nav.reports'), href: '/reports', icon: FileText },
   ]
 
   const handleLogout = () => {
@@ -70,9 +72,8 @@ const Layout = ({ children, onLogout }: LayoutProps) => {
               <Shield className="w-8 h-8 text-primary mr-3" />
               <div>
                 <h1 className="text-lg font-semibold text-neutral-900">
-                  Sensible Docs
+                  {t('app.title')}
                 </h1>
-                <p className="text-xs text-neutral-500">WOO Anonimisering</p>
               </div>
             </div>
             <button
@@ -131,10 +132,10 @@ const Layout = ({ children, onLogout }: LayoutProps) => {
             <div className="bg-blue-50 rounded-lg p-3 mb-3">
               <div className="flex items-center space-x-2 text-xs text-blue-700 mb-1">
                 <Shield className="w-3 h-3" />
-                <span>Gemeente SSO Actief</span>
+                <span>{t('app.ssoActive')}</span>
               </div>
               <div className="text-xs text-blue-600">
-                Sessie: {currentUser?.id.substring(0, 8)}...
+                {t('app.session')}: {currentUser?.id.substring(0, 8)}...
               </div>
             </div>
 
@@ -144,7 +145,7 @@ const Layout = ({ children, onLogout }: LayoutProps) => {
               className="w-full flex items-center justify-center space-x-2 px-3 py-2 text-sm text-red-700 hover:bg-red-50 rounded-lg transition-colors"
             >
               <LogOut className="w-4 h-4" />
-              <span>Uitloggen</span>
+              <span>{t('nav.logout')}</span>
             </button>
           </div>
         </div>
@@ -167,9 +168,6 @@ const Layout = ({ children, onLogout }: LayoutProps) => {
                 <h2 className="text-lg font-semibold text-neutral-900">
                   {navigation.find(item => item.href === location.pathname)?.name || 'Dashboard'}
                 </h2>
-                <p className="text-sm text-neutral-500">
-                  Veilig documenten anonimiseren volgens WOO-wetgeving
-                </p>
               </div>
             </div>
 
