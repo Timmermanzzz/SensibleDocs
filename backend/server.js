@@ -10,7 +10,7 @@ import { dirname, join } from 'path'
 import fs from 'fs/promises'
 import winston from 'winston'
 import dotenv from 'dotenv-flow'
-import auditService from './services/auditService.js'
+const auditService = require('./services/auditService.js')
 
 // Load environment variables
 dotenv.config()
@@ -345,13 +345,12 @@ app.get('/api/audit', async (req, res) => {
       endDate
     }
     
-    const logs = auditService.getLogs(filters)
-    const stats = auditService.getStatistics()
-    const integrity = auditService.verifyLogIntegrity()
+    const auditData = await auditService.getAuditLog(filters)
+    const integrity = await auditService.verifyIntegrity()
     
     res.json({
-      logs,
-      stats,
+      logs: auditData.logs,
+      stats: auditData.stats,
       integrity,
       filters: Object.fromEntries(Object.entries(filters).filter(([_, v]) => v))
     })
@@ -404,7 +403,7 @@ app.get('/api/audit/export', async (req, res) => {
     }
     
     const filters = { userId, documentId, eventType, startDate, endDate }
-    const csvContent = auditService.exportToCsv(filters)
+    const csvContent = await auditService.exportAuditLog(filters)
     
     const filename = `audit-log-${new Date().toISOString().split('T')[0]}.csv`
     
@@ -432,7 +431,7 @@ app.get('/api/audit/verify', async (req, res) => {
       })
     }
     
-    const verification = auditService.verifyLogIntegrity()
+    const verification = await auditService.verifyIntegrity()
     
     res.json({
       verification,

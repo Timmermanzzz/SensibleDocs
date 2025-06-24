@@ -13,13 +13,21 @@
       "use": "@vercel/node"
     }
   ],
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 30
+    },
+    "backend/server.js": {
+      "maxDuration": 30
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",
       "destination": "/api/index.js"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ],
@@ -28,12 +36,12 @@
       "source": "/(.*)",
       "headers": [
         {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        },
-        {
           "key": "X-Frame-Options",
           "value": "DENY"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
         },
         {
           "key": "X-XSS-Protection",
@@ -52,6 +60,8 @@
     }
   ],
   "env": {
-    "NODE_ENV": "production"
+    "NODE_ENV": "production",
+    "VERCEL_ENV": "1",
+    "AUDIT_STORAGE": "vercel-kv"
   }
 } 

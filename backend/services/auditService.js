@@ -1,361 +1,322 @@
-import fs from 'fs'
-import path from 'path'
-import crypto from 'crypto'
+const crypto = require('crypto')
+const winston = require('winston')
 
-class AuditService {
+// In-memory storage for demo - in production you'd use a database
+let auditEvents = []
+let lastHash = null
+
+// Simple persistent storage simulation for Vercel
+class VercelAuditStorage {
   constructor() {
-    this.logPath = '/tmp/demo/audit-log.json'
-    this.ensureLogFile()
+    this.events = []
+    this.lastHash = null
+    this.isVercelEnv = process.env.VERCEL_ENV === '1'
   }
 
-  ensureLogFile() {
-    const dir = path.dirname(this.logPath)
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true })
+  async getEvents() {
+    if (this.isVercelEnv) {
+      // In Vercel, try to load from a simple JSON storage
+      // This is a demo implementation - in production use proper database
+      return this.events
     }
-    
-    if (!fs.existsSync(this.logPath)) {
-      fs.writeFileSync(this.logPath, JSON.stringify([], null, 2))
-    }
+    return auditEvents
   }
 
-  generateHash(data, previousHash = '') {
-    const content = JSON.stringify(data) + previousHash
-    return crypto.createHash('sha256').update(content).digest('hex')
-  }
-
-  async logEvent(eventData) {
-    try {
-      // Read existing logs directly from file
-      const data = fs.readFileSync(this.logPath, 'utf8')
-      const logs = JSON.parse(data)
-      
-      // Get previous hash for chain
-      const previousHash = logs.length > 0 ? logs[logs.length - 1].hash : ''
-      
-      // Create new event
-      const event = {
-        id: crypto.randomUUID(),
-        timestamp: new Date().toISOString(),
-        sequence: logs.length + 1,
-        previousHash,
-        ...eventData,
-        metadata: {
-          userAgent: eventData.userAgent || 'Unknown',
-          ipAddress: eventData.ipAddress || '127.0.0.1',
-          sessionId: eventData.sessionId || 'demo-session',
-          ...eventData.metadata
-        }
+  async addEvent(event) {
+    if (this.isVercelEnv) {
+      this.events.push(event)
+      // Keep only last 1000 events in memory for demo
+      if (this.events.length > 1000) {
+        this.events = this.events.slice(-1000)
       }
-      
-      // Generate hash for this event (excluding the hash field itself)
-      const eventForHashing = { ...event }
-      event.hash = this.generateHash(eventForHashing, previousHash)
-      
-      // Append to logs
-      logs.push(event)
-      
-      // Write back to file
-      fs.writeFileSync(this.logPath, JSON.stringify(logs, null, 2))
-      
-      console.log(`✅ Audit Event Logged: ${event.eventType} by ${event.userId}`)
-      return event
-      
-    } catch (error) {
-      console.error('❌ Audit logging failed:', error)
-      throw error
+    } else {
+      auditEvents.push(event)
     }
   }
 
-  getLogs(filters = {}) {
-    try {
-      const data = fs.readFileSync(this.logPath, 'utf8')
-      let logs = JSON.parse(data)
-      
-      // Apply filters
-      if (filters.userId) {
-        logs = logs.filter(log => log.userId === filters.userId)
-      }
-      
-      if (filters.documentId) {
-        logs = logs.filter(log => log.documentId === filters.documentId)
-      }
-      
-      if (filters.eventType) {
-        logs = logs.filter(log => log.eventType === filters.eventType)
-      }
-      
-      if (filters.startDate) {
-        logs = logs.filter(log => new Date(log.timestamp) >= new Date(filters.startDate))
-      }
-      
-      if (filters.endDate) {
-        logs = logs.filter(log => new Date(log.timestamp) <= new Date(filters.endDate))
-      }
-      
-      return logs.reverse() // Most recent first
-      
-    } catch (error) {
-      console.error('❌ Failed to read audit logs:', error)
-      return []
+  async getLastHash() {
+    if (this.isVercelEnv) {
+      return this.lastHash
+    }
+    return lastHash
+  }
+
+  async setLastHash(hash) {
+    if (this.isVercelEnv) {
+      this.lastHash = hash
+    } else {
+      lastHash = hash
     }
   }
 
-  verifyLogIntegrity() {
-    try {
-      // Get logs in original order (not reversed) for verification
-      const data = fs.readFileSync(this.logPath, 'utf8')
-      const logs = JSON.parse(data)
-      let isValid = true
-      const issues = []
-      
-      for (let i = 0; i < logs.length; i++) {
-        const log = logs[i]
-        const previousHash = i > 0 ? logs[i - 1].hash : ''
-        
-        // Create a copy of the log without the hash for verification
-        const logForHashing = { ...log }
-        delete logForHashing.hash
-        
-        // Verify hash
-        const expectedHash = this.generateHash(logForHashing, previousHash)
-        if (log.hash !== expectedHash) {
-          isValid = false
-          issues.push({
-            sequence: log.sequence,
-            issue: 'Hash mismatch - possible tampering',
-            expected: expectedHash,
-            actual: log.hash
-          })
-        }
-        
-        // Verify sequence
-        if (log.sequence !== i + 1) {
-          isValid = false
-          issues.push({
-            sequence: log.sequence,
-            issue: 'Sequence number mismatch',
-            expected: i + 1,
-            actual: log.sequence
-          })
-        }
-      }
-      
-      return { isValid, issues, totalEvents: logs.length }
-    } catch (error) {
-      console.error('❌ Failed to verify log integrity:', error)
-      return { isValid: false, issues: [{ sequence: 0, issue: 'Failed to read log file' }], totalEvents: 0 }
-    }
-  }
+  async getStats() {
+    const events = await this.getEvents()
+    const eventTypes = {}
+    const users = {}
+    let documentsProcessed = 0
 
-  getStatistics() {
-    const logs = this.getLogs()
-    const stats = {
-      totalEvents: logs.length,
-      eventTypes: {},
-      users: {},
-      documentsProcessed: new Set(),
+    events.forEach(event => {
+      // Count event types
+      eventTypes[event.eventType] = (eventTypes[event.eventType] || 0) + 1
+      
+      // Count unique users
+      users[event.userId] = (users[event.userId] || 0) + 1
+      
+      // Count document processing events
+      if (event.eventType.includes('upload_completed') || event.eventType.includes('masking_succeeded')) {
+        documentsProcessed++
+      }
+    })
+
+    return {
+      totalEvents: events.length,
+      eventTypes,
+      users,
+      documentsProcessed,
       timeRange: {
-        first: logs.length > 0 ? logs[logs.length - 1].timestamp : null,
-        last: logs.length > 0 ? logs[0].timestamp : null
+        first: events.length > 0 ? events[0].timestamp : null,
+        last: events.length > 0 ? events[events.length - 1].timestamp : null
       }
     }
-    
-    logs.forEach(log => {
-      // Event types
-      stats.eventTypes[log.eventType] = (stats.eventTypes[log.eventType] || 0) + 1
-      
-      // Users
-      stats.users[log.userId] = (stats.users[log.userId] || 0) + 1
-      
-      // Documents
-      if (log.documentId) {
-        stats.documentsProcessed.add(log.documentId)
-      }
-    })
-    
-    stats.documentsProcessed = stats.documentsProcessed.size
-    
-    return stats
-  }
-
-  // Event logging helpers
-  async logUploadStarted(userId, fileName, fileSize, sessionId) {
-    return this.logEvent({
-      eventType: 'upload_started',
-      userId,
-      action: 'Document upload initiated',
-      details: {
-        fileName,
-        fileSize,
-        fileSizeMB: Math.round(fileSize / 1024 / 1024 * 100) / 100
-      },
-      sessionId
-    })
-  }
-
-  async logUploadCompleted(userId, documentId, fileName, sessionId) {
-    return this.logEvent({
-      eventType: 'upload_completed',
-      userId,
-      documentId,
-      action: 'Document upload completed',
-      details: {
-        fileName,
-        documentId
-      },
-      sessionId
-    })
-  }
-
-  async logProfileSelected(userId, documentId, profileName, sessionId) {
-    return this.logEvent({
-      eventType: 'profile_selected',
-      userId,
-      documentId,
-      action: 'Anonymization profile selected',
-      details: {
-        profileName
-      },
-      sessionId
-    })
-  }
-
-  async logMaskingRequested(userId, documentId, profileName, sessionId) {
-    return this.logEvent({
-      eventType: 'masking_requested',
-      userId,
-      documentId,
-      action: 'Document anonymization started',
-      details: {
-        profileName,
-        status: 'processing'
-      },
-      sessionId
-    })
-  }
-
-  async logMaskingSucceeded(userId, documentId, piiStats, sessionId) {
-    return this.logEvent({
-      eventType: 'masking_succeeded',
-      userId,
-      documentId,
-      action: 'Document anonymization completed',
-      details: {
-        ...piiStats,
-        status: 'completed'
-      },
-      sessionId
-    })
-  }
-
-  async logItemOverridden(userId, documentId, itemType, action, itemDetails, sessionId) {
-    return this.logEvent({
-      eventType: 'item_overridden',
-      userId,
-      documentId,
-      action: `PII item ${action}`,
-      details: {
-        itemType,
-        overrideAction: action, // 'approved' or 'rejected'
-        ...itemDetails
-      },
-      sessionId
-    })
-  }
-
-  async logDownloadRequested(userId, documentId, downloadType, sessionId) {
-    return this.logEvent({
-      eventType: 'download_requested',
-      userId,
-      documentId,
-      action: 'Document download initiated',
-      details: {
-        downloadType, // 'original' or 'anonymized'
-        status: 'requested'
-      },
-      sessionId
-    })
-  }
-
-  async logDownloadCompleted(userId, documentId, downloadType, fileSize, sessionId) {
-    return this.logEvent({
-      eventType: 'download_completed',
-      userId,
-      documentId,
-      action: 'Document download completed',
-      details: {
-        downloadType,
-        fileSizeBytes: fileSize,
-        fileSizeMB: Math.round(fileSize / 1024 / 1024 * 100) / 100,
-        status: 'completed'
-      },
-      sessionId
-    })
-  }
-
-  async logPageVisited(userId, pageName, sessionId) {
-    return this.logEvent({
-      eventType: 'page_visited',
-      userId,
-      action: 'Page navigation',
-      details: {
-        pageName,
-        url: pageName
-      },
-      sessionId
-    })
-  }
-
-  async logSessionStarted(userId, userRole, sessionId) {
-    return this.logEvent({
-      eventType: 'session_started',
-      userId,
-      action: 'User session started',
-      details: {
-        userRole,
-        loginTime: new Date().toISOString()
-      },
-      sessionId
-    })
-  }
-
-  // Export functionality
-  exportToCsv(filters = {}) {
-    const logs = this.getLogs(filters)
-    
-    const headers = [
-      'Timestamp',
-      'User ID', 
-      'Event Type',
-      'Action',
-      'Document ID',
-      'Details',
-      'Session ID',
-      'Hash'
-    ]
-    
-    const rows = logs.map(log => [
-      log.timestamp,
-      log.userId,
-      log.eventType,
-      log.action,
-      log.documentId || '',
-      JSON.stringify(log.details),
-      log.sessionId,
-      log.hash
-    ])
-    
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-    ].join('\n')
-    
-    return csvContent
   }
 }
 
-// Singleton instance
-const auditService = new AuditService()
+const storage = new VercelAuditStorage()
 
-export default auditService 
+// Logger configuration
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.colorize(),
+        winston.format.simple()
+      )
+    })
+  ]
+})
+
+// Add file transport only in non-Vercel environments
+if (!process.env.VERCEL_ENV) {
+  logger.add(new winston.transports.File({ 
+    filename: 'tmp/audit.log',
+    maxsize: 50 * 1024 * 1024, // 50MB
+    maxFiles: 5,
+    tailable: true
+  }))
+}
+
+function generateHash(data, previousHash = '') {
+  const content = previousHash + JSON.stringify(data) + Date.now()
+  return crypto.createHash('sha256').update(content).digest('hex')
+}
+
+async function logEvent(eventData) {
+  try {
+    const events = await storage.getEvents()
+    const lastEventHash = await storage.getLastHash()
+    
+    const sequence = events.length + 1
+    const hash = generateHash(eventData, lastEventHash)
+    
+    const auditEvent = {
+      id: crypto.randomUUID(),
+      timestamp: new Date().toISOString(),
+      sequence,
+      eventType: eventData.eventType,
+      action: eventData.action,
+      userId: eventData.userId,
+      documentId: eventData.documentId || null,
+      details: eventData.details || {},
+      sessionId: eventData.sessionId || 'unknown',
+      hash,
+      previousHash: lastEventHash || '',
+      metadata: {
+        userAgent: eventData.userAgent || 'unknown',
+        ipAddress: eventData.ipAddress || 'unknown'
+      }
+    }
+
+    await storage.addEvent(auditEvent)
+    await storage.setLastHash(hash)
+    
+    logger.info(`✅ Audit Event Logged: ${eventData.eventType} by ${eventData.userId}`)
+    
+    return auditEvent
+  } catch (error) {
+    logger.error('❌ Audit logging failed:', error)
+    throw error
+  }
+}
+
+async function getAuditLog(filters = {}) {
+  try {
+    let events = await storage.getEvents()
+    
+    // Apply filters
+    if (filters.userId) {
+      events = events.filter(event => event.userId.includes(filters.userId))
+    }
+    
+    if (filters.eventType) {
+      events = events.filter(event => event.eventType === filters.eventType)
+    }
+    
+    if (filters.documentId) {
+      events = events.filter(event => event.documentId === filters.documentId)
+    }
+    
+    if (filters.startDate) {
+      events = events.filter(event => new Date(event.timestamp) >= new Date(filters.startDate))
+    }
+    
+    if (filters.endDate) {
+      events = events.filter(event => new Date(event.timestamp) <= new Date(filters.endDate))
+    }
+    
+    // Sort by sequence number (newest first)
+    events.sort((a, b) => b.sequence - a.sequence)
+    
+    const stats = await storage.getStats()
+    
+    return {
+      logs: events,
+      stats
+    }
+  } catch (error) {
+    logger.error('❌ Failed to retrieve audit log:', error)
+    throw error
+  }
+}
+
+async function verifyIntegrity() {
+  try {
+    const events = await storage.getEvents()
+    const issues = []
+    
+    for (let i = 1; i < events.length; i++) {
+      const current = events[i]
+      const previous = events[i - 1]
+      
+      // Check sequence continuity
+      if (current.sequence !== previous.sequence + 1) {
+        issues.push({
+          sequence: current.sequence,
+          issue: 'Sequence gap detected',
+          expected: previous.sequence + 1,
+          actual: current.sequence
+        })
+      }
+      
+      // Check hash chain
+      if (current.previousHash !== previous.hash) {
+        issues.push({
+          sequence: current.sequence,
+          issue: 'Hash chain broken',
+          expected: previous.hash,
+          actual: current.previousHash
+        })
+      }
+    }
+    
+    return {
+      isValid: issues.length === 0,
+      issues,
+      totalEvents: events.length
+    }
+  } catch (error) {
+    logger.error('❌ Integrity verification failed:', error)
+    throw error
+  }
+}
+
+// Export audit log as CSV
+async function exportAuditLog(filters = {}) {
+  try {
+    const { logs } = await getAuditLog(filters)
+    
+    const headers = [
+      'Timestamp',
+      'Sequence',
+      'Event Type',
+      'Action',
+      'User ID',
+      'Document ID',
+      'Details',
+      'Session ID',
+      'Hash',
+      'IP Address',
+      'User Agent'
+    ]
+    
+    const csvRows = [
+      headers.join(','),
+      ...logs.map(event => [
+        event.timestamp,
+        event.sequence,
+        event.eventType,
+        `"${event.action}"`,
+        event.userId,
+        event.documentId || '',
+        `"${JSON.stringify(event.details).replace(/"/g, '""')}"`,
+        event.sessionId,
+        event.hash,
+        event.metadata.ipAddress,
+        `"${event.metadata.userAgent}"`
+      ].join(','))
+    ]
+    
+    return csvRows.join('\n')
+  } catch (error) {
+    logger.error('❌ Export failed:', error)
+    throw error
+  }
+}
+
+// Initialize with some demo data for Vercel
+async function initializeDemoData() {
+  const events = await storage.getEvents()
+  if (events.length === 0) {
+    // Add some initial demo events
+    const demoEvents = [
+      {
+        eventType: 'session_started',
+        action: 'User session started',
+        userId: 'user-admin-1',
+        sessionId: 'demo-session-1',
+        userAgent: 'Demo Browser',
+        ipAddress: '127.0.0.1'
+      },
+      {
+        eventType: 'page_visited',
+        action: 'Navigated to Dashboard',
+        userId: 'user-admin-1',
+        sessionId: 'demo-session-1',
+        details: { pageName: 'Dashboard' },
+        userAgent: 'Demo Browser',
+        ipAddress: '127.0.0.1'
+      }
+    ]
+    
+    for (const event of demoEvents) {
+      await logEvent(event)
+    }
+  }
+}
+
+// Initialize demo data on import
+if (process.env.VERCEL_ENV) {
+  initializeDemoData().catch(console.error)
+}
+
+module.exports = {
+  logEvent,
+  getAuditLog,
+  verifyIntegrity,
+  exportAuditLog,
+  logger
+} 

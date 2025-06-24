@@ -78,37 +78,68 @@ const limiter = rateLimit({
 })
 app.use('/api/', limiter)
 
-// Audit service
-class AuditService {
+// Enhanced Audit service for Vercel
+class VercelAuditService {
   constructor() {
     this.events = []
+    this.lastHash = null
+    // Initialize with some demo data
+    this.initializeDemoData()
+  }
+
+  generateHash(data, previousHash = '') {
+    const crypto = require('crypto')
+    const content = previousHash + JSON.stringify(data) + Date.now()
+    return crypto.createHash('sha256').update(content).digest('hex')
   }
 
   async logEvent(eventData) {
+    const sequence = this.events.length + 1
+    const hash = this.generateHash(eventData, this.lastHash)
+    
     const event = {
-      id: Date.now().toString(),
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       timestamp: new Date().toISOString(),
-      ...eventData
+      sequence,
+      eventType: eventData.eventType,
+      action: eventData.action,
+      userId: eventData.userId,
+      documentId: eventData.documentId || null,
+      details: eventData.details || {},
+      sessionId: eventData.sessionId || 'unknown',
+      hash,
+      previousHash: this.lastHash || '',
+      metadata: {
+        userAgent: eventData.userAgent || 'unknown',
+        ipAddress: eventData.ipAddress || 'unknown'
+      }
     }
     
-    this.events.unshift(event)
+    this.events.push(event)
+    this.lastHash = hash
+    
+    // Keep only last 1000 events for demo
     if (this.events.length > 1000) {
-      this.events = this.events.slice(0, 1000)
+      this.events = this.events.slice(-1000)
     }
     
     logger.info(`✅ Audit Event Logged: ${event.eventType} by ${event.userId}`)
     return event
   }
 
-  async getEvents(filters = {}) {
+  async getAuditLog(filters = {}) {
     let filteredEvents = [...this.events]
     
     if (filters.userId) {
-      filteredEvents = filteredEvents.filter(event => event.userId === filters.userId)
+      filteredEvents = filteredEvents.filter(event => event.userId.includes(filters.userId))
     }
     
     if (filters.eventType) {
       filteredEvents = filteredEvents.filter(event => event.eventType === filters.eventType)
+    }
+    
+    if (filters.documentId) {
+      filteredEvents = filteredEvents.filter(event => event.documentId === filters.documentId)
     }
     
     if (filters.startDate) {
@@ -123,11 +154,133 @@ class AuditService {
       )
     }
     
-    return filteredEvents
+    // Sort by sequence (newest first)
+    filteredEvents.sort((a, b) => b.sequence - a.sequence)
+    
+    const stats = this.getStats()
+    
+    return {
+      logs: filteredEvents,
+      stats
+    }
+  }
+
+  getStats() {
+    const eventTypes = {}
+    const users = {}
+    let documentsProcessed = 0
+
+    this.events.forEach(event => {
+      eventTypes[event.eventType] = (eventTypes[event.eventType] || 0) + 1
+      users[event.userId] = (users[event.userId] || 0) + 1
+      
+      if (event.eventType.includes('upload_completed') || event.eventType.includes('masking_succeeded')) {
+        documentsProcessed++
+      }
+    })
+
+    return {
+      totalEvents: this.events.length,
+      eventTypes,
+      users,
+      documentsProcessed,
+      timeRange: {
+        first: this.events.length > 0 ? this.events[0].timestamp : null,
+        last: this.events.length > 0 ? this.events[this.events.length - 1].timestamp : null
+      }
+    }
+  }
+
+  async verifyIntegrity() {
+    const issues = []
+    
+    for (let i = 1; i < this.events.length; i++) {
+      const current = this.events[i]
+      const previous = this.events[i - 1]
+      
+      if (current.sequence !== previous.sequence + 1) {
+        issues.push({
+          sequence: current.sequence,
+          issue: 'Sequence gap detected',
+          expected: previous.sequence + 1,
+          actual: current.sequence
+        })
+      }
+      
+      if (current.previousHash !== previous.hash) {
+        issues.push({
+          sequence: current.sequence,
+          issue: 'Hash chain broken',
+          expected: previous.hash,
+          actual: current.previousHash
+        })
+      }
+    }
+    
+    return {
+      isValid: issues.length === 0,
+      issues,
+      totalEvents: this.events.length
+    }
+  }
+
+  async exportAuditLog(filters = {}) {
+    const { logs } = await this.getAuditLog(filters)
+    
+    const headers = [
+      'Timestamp', 'Sequence', 'Event Type', 'Action', 'User ID', 
+      'Document ID', 'Details', 'Session ID', 'Hash', 'IP Address', 'User Agent'
+    ]
+    
+    const csvRows = [
+      headers.join(','),
+      ...logs.map(event => [
+        event.timestamp,
+        event.sequence,
+        event.eventType,
+        `"${event.action}"`,
+        event.userId,
+        event.documentId || '',
+        `"${JSON.stringify(event.details).replace(/"/g, '""')}"`,
+        event.sessionId,
+        event.hash,
+        event.metadata.ipAddress,
+        `"${event.metadata.userAgent}"`
+      ].join(','))
+    ]
+    
+    return csvRows.join('\n')
+  }
+
+  initializeDemoData() {
+    // Add some initial demo events
+    const demoEvents = [
+      {
+        eventType: 'session_started',
+        action: 'User session started',
+        userId: 'user-admin-1',
+        sessionId: 'demo-session-1',
+        userAgent: 'Demo Browser',
+        ipAddress: '127.0.0.1'
+      },
+      {
+        eventType: 'page_visited',
+        action: 'Navigated to Dashboard',
+        userId: 'user-admin-1',
+        sessionId: 'demo-session-1',
+        details: { pageName: 'Dashboard' },
+        userAgent: 'Demo Browser',
+        ipAddress: '127.0.0.1'
+      }
+    ]
+    
+    demoEvents.forEach(event => {
+      this.logEvent(event).catch(console.error)
+    })
   }
 }
 
-const auditService = new AuditService()
+const auditService = new VercelAuditService()
 
 // Mock data
 const mockProjects = [
@@ -301,82 +454,82 @@ app.post('/api/audit/log', async (req, res) => {
   }
 })
 
-// Get audit events (both routes for compatibility)
+// Get audit logs (enhanced for admin interface)
 app.get('/api/audit', async (req, res) => {
   try {
-    const { userId, eventType, startDate, endDate, page = 1, limit = 50 } = req.query
+    const { userId, eventType, documentId, startDate, endDate, userRole } = req.query
     
-    const events = await auditService.getEvents({
-      userId,
-      eventType,
-      startDate,
-      endDate
-    })
+    // Only admins can view audit logs
+    if (userRole !== 'admin') {
+      return res.status(403).json({
+        error: 'Alleen beheerders kunnen audit logs bekijken'
+      })
+    }
     
-    const startIndex = (parseInt(page) - 1) * parseInt(limit)
-    const endIndex = startIndex + parseInt(limit)
-    const paginatedEvents = events.slice(startIndex, endIndex)
+    const filters = { userId, eventType, documentId, startDate, endDate }
+    const auditData = await auditService.getAuditLog(filters)
+    const integrity = await auditService.verifyIntegrity()
     
     res.json({
-      events: paginatedEvents,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total: events.length,
-        pages: Math.ceil(events.length / parseInt(limit))
-      }
+      logs: auditData.logs,
+      stats: auditData.stats,
+      integrity,
+      filters: Object.fromEntries(Object.entries(filters).filter(([_, v]) => v))
     })
   } catch (error) {
-    logger.error('Get audit events error:', error)
-    res.status(500).json({ error: 'Fout bij het ophalen van audit events' })
+    logger.error('Get audit logs error:', error)
+    res.status(500).json({ error: 'Fout bij het ophalen van audit logs' })
   }
 })
 
-app.get('/api/audit/events', async (req, res) => {
+// Log new audit event
+app.post('/api/audit/log', async (req, res) => {
   try {
-    const { userId, eventType, startDate, endDate, page = 1, limit = 50 } = req.query
+    const { eventType, userId, action, documentId, details, sessionId } = req.body
     
-    const events = await auditService.getEvents({
-      userId,
+    const event = await auditService.logEvent({
       eventType,
-      startDate,
-      endDate
+      userId,
+      action,
+      documentId,
+      details,
+      sessionId,
+      userAgent: req.get('User-Agent'),
+      ipAddress: req.ip || req.connection.remoteAddress
     })
-    
-    const startIndex = (parseInt(page) - 1) * parseInt(limit)
-    const endIndex = startIndex + parseInt(limit)
-    const paginatedEvents = events.slice(startIndex, endIndex)
     
     res.json({
-      events: paginatedEvents,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total: events.length,
-        pages: Math.ceil(events.length / parseInt(limit))
-      }
+      success: true,
+      event
     })
   } catch (error) {
-    logger.error('Get audit events error:', error)
-    res.status(500).json({ error: 'Fout bij het ophalen van audit events' })
+    logger.error('Audit logging error:', error)
+    res.status(500).json({
+      error: 'Fout bij het loggen van audit event'
+    })
   }
 })
 
 // Audit export endpoint
 app.get('/api/audit/export', async (req, res) => {
   try {
-    const { userId, eventType, startDate, endDate } = req.query
+    const { userId, eventType, documentId, startDate, endDate, userRole } = req.query
     
-    const events = await auditService.getEvents({
-      userId,
-      eventType,
-      startDate,
-      endDate
-    })
+    // Only admins can export audit logs
+    if (userRole !== 'admin') {
+      return res.status(403).json({
+        error: 'Alleen beheerders kunnen audit logs exporteren'
+      })
+    }
     
-    res.setHeader('Content-Type', 'application/json')
-    res.setHeader('Content-Disposition', 'attachment; filename=audit-log.json')
-    res.json(events)
+    const filters = { userId, eventType, documentId, startDate, endDate }
+    const csvContent = await auditService.exportAuditLog(filters)
+    
+    const filename = `audit-log-${new Date().toISOString().split('T')[0]}.csv`
+    
+    res.setHeader('Content-Type', 'text/csv')
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
+    res.send(csvContent)
   } catch (error) {
     logger.error('Audit export error:', error)
     res.status(500).json({ error: 'Fout bij het exporteren van audit log' })
@@ -388,17 +541,22 @@ app.get('/api/audit/verify', async (req, res) => {
   try {
     const { userRole } = req.query
     
-    // Mock verification based on role
-    const canVerify = ['admin', 'woo_officer'].includes(userRole)
+    // Only admins can verify audit logs
+    if (userRole !== 'admin') {
+      return res.status(403).json({
+        error: 'Alleen beheerders kunnen log integriteit verifiëren'
+      })
+    }
+    
+    const verification = await auditService.verifyIntegrity()
     
     res.json({
-      canVerify,
-      verificationStatus: canVerify ? 'authorized' : 'unauthorized',
-      message: canVerify ? 'Gebruiker geautoriseerd voor audit verificatie' : 'Onvoldoende rechten'
+      verification,
+      timestamp: new Date().toISOString()
     })
   } catch (error) {
     logger.error('Audit verify error:', error)
-    res.status(500).json({ error: 'Fout bij audit verificatie' })
+    res.status(500).json({ error: 'Fout bij het verifiëren van log integriteit' })
   }
 })
 
