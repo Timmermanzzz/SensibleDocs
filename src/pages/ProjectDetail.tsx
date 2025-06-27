@@ -584,13 +584,13 @@ const ProjectDetail = () => {
                       <span>Download alles</span>
                     </button>
                   )}
-                  <Link
-                    to={`/upload?project=${project.id}`}
-                    className="btn-sm btn-primary flex items-center space-x-2"
-                  >
-                    <Upload className="w-4 h-4" />
-                    <span>Upload</span>
-                  </Link>
+                <Link
+                  to={`/upload?project=${project.id}`}
+                  className="btn-sm btn-primary flex items-center space-x-2"
+                >
+                  <Upload className="w-4 h-4" />
+                  <span>Upload</span>
+                </Link>
                 </div>
               </div>
 

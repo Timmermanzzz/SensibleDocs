@@ -99,7 +99,7 @@ const logger = winston.createLogger({
     })
   ]
 })
-
+      
 // Add file transport only in non-Vercel environments
 if (!process.env.VERCEL_ENV) {
   logger.add(new winston.transports.File({ 
@@ -108,13 +108,13 @@ if (!process.env.VERCEL_ENV) {
     maxFiles: 5,
     tailable: true
   }))
-}
-
+      }
+      
 function generateHash(data, previousHash = '') {
   const content = previousHash + JSON.stringify(data) + Date.now()
   return crypto.createHash('sha256').update(content).digest('hex')
-}
-
+      }
+      
 async function logEvent(eventData) {
   try {
     const events = await storage.getEvents()
@@ -147,7 +147,7 @@ async function logEvent(eventData) {
     logger.info(`✅ Audit Event Logged: ${eventData.eventType} by ${eventData.userId}`)
     
     return auditEvent
-  } catch (error) {
+    } catch (error) {
     logger.error('❌ Audit logging failed:', error)
     throw error
   }
@@ -160,11 +160,11 @@ async function getAuditLog(filters = {}) {
     // Apply filters
     if (filters.userId) {
       events = events.filter(event => event.userId.includes(filters.userId))
-    }
-    
+        }
+        
     if (filters.eventType) {
       events = events.filter(event => event.eventType === filters.eventType)
-    }
+        }
     
     if (filters.documentId) {
       events = events.filter(event => event.documentId === filters.documentId)
@@ -191,7 +191,7 @@ async function getAuditLog(filters = {}) {
     logger.error('❌ Failed to retrieve audit log:', error)
     throw error
   }
-}
+  }
 
 async function verifyIntegrity() {
   try {
@@ -209,9 +209,9 @@ async function verifyIntegrity() {
           issue: 'Sequence gap detected',
           expected: previous.sequence + 1,
           actual: current.sequence
-        })
-      }
-      
+    })
+  }
+
       // Check hash chain
       if (current.previousHash !== previous.hash) {
         issues.push({
@@ -219,8 +219,8 @@ async function verifyIntegrity() {
           issue: 'Hash chain broken',
           expected: previous.hash,
           actual: current.previousHash
-        })
-      }
+    })
+  }
     }
     
     return {
@@ -232,7 +232,7 @@ async function verifyIntegrity() {
     logger.error('❌ Integrity verification failed:', error)
     throw error
   }
-}
+  }
 
 // Export audit log as CSV
 async function exportAuditLog(filters = {}) {

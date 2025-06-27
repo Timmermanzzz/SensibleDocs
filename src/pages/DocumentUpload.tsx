@@ -275,29 +275,29 @@ const DocumentUpload = () => {
 
         } else {
           // Regular processing (mock)
-          await new Promise(resolve => setTimeout(resolve, 1000))
+        await new Promise(resolve => setTimeout(resolve, 1000))
 
-          setFiles(prev => prev.map(f => 
-            f.id === file.id 
-              ? { ...f, status: 'processing', progress: 75 }
-              : f
-          ))
+        setFiles(prev => prev.map(f => 
+          f.id === file.id 
+            ? { ...f, status: 'processing', progress: 75 }
+            : f
+        ))
 
-          await new Promise(resolve => setTimeout(resolve, 2000))
+        await new Promise(resolve => setTimeout(resolve, 2000))
 
-          // Mock AI processing result
-          const piiFound = Math.floor(Math.random() * 20)
-          
-          setFiles(prev => prev.map(f => 
-            f.id === file.id 
-              ? { 
-                  ...f, 
-                  status: 'completed', 
-                  progress: 100,
-                  piiFound 
-                }
-              : f
-          ))
+        // Mock AI processing result
+        const piiFound = Math.floor(Math.random() * 20)
+        
+        setFiles(prev => prev.map(f => 
+          f.id === file.id 
+            ? { 
+                ...f, 
+                status: 'completed', 
+                progress: 100,
+                piiFound 
+              }
+            : f
+        ))
         }
 
         // Log upload completion
@@ -307,10 +307,10 @@ const DocumentUpload = () => {
       if (selectedProfile === 'full-anonymization') {
         toast.success('Alle documenten zijn volledig geanonimiseerd en gedownload!')
       } else {
-        toast.success('Alle documenten zijn succesvol verwerkt!')
-        setTimeout(() => {
-          navigate('/documents')
-        }, 2000)
+      toast.success('Alle documenten zijn succesvol verwerkt!')
+      setTimeout(() => {
+        navigate('/documents')
+      }, 2000)
       }
 
     } catch (error: any) {

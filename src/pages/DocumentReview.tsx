@@ -40,7 +40,7 @@ const DocumentReview = () => {
   const [showOriginal, setShowOriginal] = useState(false)
   const [selectedItem, setSelectedItem] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
-
+  
   
   // Sample PDF URL (local file for demo)
   const samplePdfUrl = '/samples/woo-verzoek-2024-001.pdf'
