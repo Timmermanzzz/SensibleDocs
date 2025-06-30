@@ -14,6 +14,7 @@ import {
 import { CardSkeleton } from '@components/LoadingSpinner'
 import { useAuditLogger } from '../hooks/useAuditLogger'
 import { useLanguageStore } from '../store/languageStore'
+import { currentSectorConfig } from '../config/sectors'
 
 interface StatCardProps {
   title: string
@@ -73,7 +74,7 @@ const Dashboard = () => {
   const stats = [
     {
       title: t('dashboard.documentsProcessed'),
-      value: '1,247',
+      value: '132',
       change: '+12% t.o.v. vorige maand',
       trend: 'up' as const,
       icon: FileText,
@@ -81,8 +82,8 @@ const Dashboard = () => {
     },
     {
       title: t('dashboard.successfullyAnonymized'),
-      value: '1,189',
-      change: '95.3% success rate',
+      value: '111',
+      change: '84.1% success rate',
       trend: 'up' as const,
       icon: CheckCircle,
       color: 'success' as const
@@ -105,32 +106,67 @@ const Dashboard = () => {
     }
   ]
 
-  const recentDocuments = [
-    {
-      id: '1',
-      name: 'WOO-verzoek-2024-001.pdf',
-      status: 'completed',
-      processedAt: '2024-01-15T10:30:00Z',
-      piiFound: 23,
-      user: 'M. van der Berg'
-    },
-    {
-      id: '2', 
-      name: 'Besluit-subsidie-aanvraag.docx',
-      status: 'processing',
-      processedAt: '2024-01-15T09:45:00Z',
-      piiFound: 0,
-      user: 'J. Janssen'
-    },
-    {
-      id: '3',
-      name: 'Correspondentie-klacht-burger.pdf',
-      status: 'completed',
-      processedAt: '2024-01-15T08:20:00Z',
-      piiFound: 15,
-      user: 'S. Patel'
+  // Dynamic recent documents based on sector
+  const getRecentDocuments = () => {
+    if (currentSectorConfig.id === 'education') {
+      return [
+        {
+          id: '1',
+          name: 'leerling-rapport-2024-Q1.pdf',
+          status: 'completed',
+          processedAt: '2024-01-15T10:30:00Z',
+          piiFound: 18,
+          user: 'Dhr. J. Janssen'
+        },
+        {
+          id: '2', 
+          name: 'ouder-gesprek-verslag.pdf',
+          status: 'processing',
+          processedAt: '2024-01-15T09:45:00Z',
+          piiFound: 0,
+          user: 'Mevr. A. Smit'
+        },
+        {
+          id: '3',
+          name: 'psychologische-evaluatie.pdf',
+          status: 'completed',
+          processedAt: '2024-01-15T08:20:00Z',
+          piiFound: 25,
+          user: 'Dr. M. Verhagen'
+        }
+      ]
     }
-  ]
+    
+    // Default government documents
+    return [
+      {
+        id: '1',
+        name: 'WOO-verzoek-2024-001.pdf',
+        status: 'completed',
+        processedAt: '2024-01-15T10:30:00Z',
+        piiFound: 23,
+        user: 'M. van der Berg'
+      },
+      {
+        id: '2', 
+        name: 'Besluit-subsidie-aanvraag.docx',
+        status: 'processing',
+        processedAt: '2024-01-15T09:45:00Z',
+        piiFound: 0,
+        user: 'J. Janssen'
+      },
+      {
+        id: '3',
+        name: 'Correspondentie-klacht-burger.pdf',
+        status: 'completed',
+        processedAt: '2024-01-15T08:20:00Z',
+        piiFound: 15,
+        user: 'S. Patel'
+      }
+    ]
+  }
+
+  const recentDocuments = getRecentDocuments()
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -160,29 +196,35 @@ const Dashboard = () => {
   return (
     <div className="space-y-6">
       {/* Welcome section */}
-      <div className="card p-6 bg-gradient-to-r from-primary to-primary/80 text-white">
+      <div 
+        className="card p-6 text-white"
+        style={{ 
+          background: `linear-gradient(to right, ${currentSectorConfig.primaryColor}, ${currentSectorConfig.primaryColor}CC)`
+        }}
+      >
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold mb-2">
-              {t('dashboard.welcome')} {t('app.title')}
+              {t('dashboard.welcome')} {currentSectorConfig.name}
             </h1>
-            <p className="text-primary-100 mb-4">
-              {t('dashboard.allSystemsOperational')}
+            <p className="opacity-90 mb-4">
+              {currentSectorConfig.tagline}
             </p>
             <div className="flex items-center space-x-3">
               <Link
                 to="/projects"
-                className="inline-flex items-center px-4 py-2 bg-white text-primary rounded-lg font-medium hover:bg-primary-50 transition-colors"
+                className="inline-flex items-center px-4 py-2 bg-white rounded-lg font-medium hover:bg-primary-50 transition-colors"
+                style={{ color: currentSectorConfig.primaryColor }}
               >
                 <FolderOpen className="w-4 h-4 mr-2" />
-                {t('projects.createNew')}
+                Nieuwe {currentSectorConfig.terminology.request}
               </Link>
               <Link
                 to="/upload"
                 className="inline-flex items-center px-4 py-2 bg-white/20 text-white rounded-lg font-medium hover:bg-white/30 transition-colors"
               >
                 <Upload className="w-4 h-4 mr-2" />
-                {t('nav.upload')}
+                {currentSectorConfig.terminology.documents} uploaden
               </Link>
             </div>
           </div>

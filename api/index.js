@@ -81,27 +81,93 @@ app.use('/api/', limiter)
 // Import the Supabase audit service (works for both local and Vercel)
 const auditService = require('./supabaseAuditService')
 
-// Mock data
-const mockProjects = [
-  {
-    id: '1',
-    name: 'WOO-verzoek Bestemmingsplan Centrum',
-    description: 'Verzoek om alle documenten betreffende het bestemmingsplan voor het centrum van de gemeente.',
-    status: 'in_progress',
-    progress: 65,
-    requester: {
-      name: 'Jan van der Berg',
-      email: 'j.vandenberg@gemeente.nl',
-      organization: 'Gemeente Voorbeeld'
+// Sector-specific mock data
+const getSectorMockProjects = () => {
+  const sector = process.env.VITE_SECTOR || 'government'
+  
+  if (sector === 'education') {
+    return [
+      {
+        id: '1',
+        name: 'Privacy-audit Leerlingdossiers 4B',
+        description: 'Anonimisering van alle leerlingdossiers voor overdracht naar nieuwe systeem.',
+        status: 'in_progress',
+        progress: 72,
+        requester: {
+          name: 'Mevr. A. Smit',
+          email: 'a.smit@hetgroenecollege.nl',
+          organization: 'Het Groene College'
+        },
+        department: 'Administratie',
+        deadline: '2024-02-15',
+        createdAt: '2024-01-15T10:00:00Z',
+        tags: ['leerlingdossiers', 'klas 4B', 'privacy'],
+        documentsCount: 28,
+        processedCount: 20,
+        piiItemsFound: 156
+      },
+      {
+        id: '2',
+        name: 'Psychologische Evaluaties Archivering',
+        description: 'Anonimisering van psychologische rapporten voor lange termijn archivering.',
+        status: 'completed',
+        progress: 100,
+        requester: {
+          name: 'Dr. M. Verhagen',
+          email: 'm.verhagen@schoolpsychologie.nl',
+          organization: 'Schoolpsychologie Nederland'
+        },
+        department: 'Leerlingzorg',
+        deadline: '2024-01-20',
+        createdAt: '2024-01-08T14:30:00Z',
+        tags: ['psychologie', 'evaluaties', 'archief'],
+        documentsCount: 15,
+        processedCount: 15,
+        piiItemsFound: 89
+      },
+      {
+        id: '3',
+        name: 'Ouder-gesprek Verslagen Q1',
+        description: 'Privacy-screening van alle ouder-gesprek verslagen eerste kwartaal.',
+        status: 'pending',
+        progress: 0,
+        requester: {
+          name: 'Dhr. J. Janssen',
+          email: 'j.janssen@hetgroenecollege.nl',
+          organization: 'Het Groene College'
+        },
+        department: 'Mentoraat',
+        deadline: '2024-03-01',
+        createdAt: '2024-01-20T09:15:00Z',
+        tags: ['ouder-gesprekken', 'Q1', 'mentoren'],
+        documentsCount: 42,
+        processedCount: 0,
+        piiItemsFound: 0
+      }
+    ]
+  }
+  
+  // Default government projects
+  return [
+    {
+      id: '1',
+      name: 'WOO-verzoek Bestemmingsplan Centrum',
+      description: 'Verzoek om alle documenten betreffende het bestemmingsplan voor het centrum van de gemeente.',
+      status: 'in_progress',
+      progress: 65,
+      requester: {
+        name: 'Jan van der Berg',
+        email: 'j.vandenberg@gemeente.nl',
+        organization: 'Gemeente Voorbeeld'
+      },
+      department: 'Ruimtelijke Ordening',
+      deadline: '2024-02-15',
+      createdAt: '2024-01-15T10:00:00Z',
+      tags: ['bestemmingsplan', 'centrum', 'ruimtelijke ordening'],
+      documentsCount: 24,
+      processedCount: 16,
+      piiItemsFound: 89
     },
-    department: 'Ruimtelijke Ordening',
-    deadline: '2024-02-15',
-    createdAt: '2024-01-15T10:00:00Z',
-    tags: ['bestemmingsplan', 'centrum', 'ruimtelijke ordening'],
-    documentsCount: 24,
-    processedCount: 16,
-    piiItemsFound: 89
-  },
   {
     id: '2',
     name: 'Subsidieaanvraag Sportvereniging',
@@ -120,27 +186,49 @@ const mockProjects = [
     documentsCount: 12,
     processedCount: 12,
     piiItemsFound: 34
-  },
-  {
-    id: '3',
-    name: 'Vergunningaanvraag Evenement',
-    description: 'Alle correspondentie en besluiten over de vergunningaanvraag voor het jaarlijkse straatfestival.',
-    status: 'pending',
-    progress: 0,
-    requester: {
-      name: 'Peter de Vries',
-      email: 'p.devries@evenementen.nl',
-      organization: 'Stichting Straatfestival'
     },
-    department: 'Vergunningen',
-    deadline: '2024-03-01',
-    createdAt: '2024-01-20T09:15:00Z',
-    tags: ['evenement', 'vergunning', 'festival'],
-    documentsCount: 8,
-    processedCount: 0,
-    piiItemsFound: 0
-  }
-]
+    {
+      id: '2',
+      name: 'Subsidieaanvraag Sportvereniging',
+      description: 'Documenten over subsidieverstrekking aan lokale sportverenigingen in 2023.',
+      status: 'completed',
+      progress: 100,
+      requester: {
+        name: 'Maria Janssen',
+        email: 'm.janssen@sportvereniging.nl',
+        organization: 'Sportvereniging De Eendracht'
+      },
+      department: 'Sport & Recreatie',
+      deadline: '2024-01-20',
+      createdAt: '2024-01-08T14:30:00Z',
+      tags: ['subsidie', 'sport', 'vereniging'],
+      documentsCount: 12,
+      processedCount: 12,
+      piiItemsFound: 34
+    },
+    {
+      id: '3',
+      name: 'Vergunningaanvraag Evenement',
+      description: 'Alle correspondentie en besluiten over de vergunningaanvraag voor het jaarlijkse straatfestival.',
+      status: 'pending',
+      progress: 0,
+      requester: {
+        name: 'Peter de Vries',
+        email: 'p.devries@evenementen.nl',
+        organization: 'Stichting Straatfestival'
+      },
+      department: 'Vergunningen',
+      deadline: '2024-03-01',
+      createdAt: '2024-01-20T09:15:00Z',
+      tags: ['evenement', 'vergunning', 'festival'],
+      documentsCount: 8,
+      processedCount: 0,
+      piiItemsFound: 0
+    }
+  ]
+}
+
+const mockProjects = getSectorMockProjects()
 
 // API Routes
 

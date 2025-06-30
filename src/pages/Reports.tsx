@@ -21,10 +21,10 @@ const Reports = () => {
   ]
 
   const reportData = {
-    totalDocuments: 1247,
-    processedSuccessfully: 1189,
+    totalDocuments: 132,
+    processedSuccessfully: 111,
     avgProcessingTime: '3.2 min',
-    piiItemsFound: 15637
+    piiItemsFound: 847
   }
 
   return (

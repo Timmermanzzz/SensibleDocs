@@ -455,10 +455,10 @@ app.get('/api/analytics', async (req, res) => {
     
     // Mock analytics data
     const analytics = {
-      totalDocuments: 1247,
-      processedSuccessfully: 1189,
+      totalDocuments: 132,
+      processedSuccessfully: 111,
       avgProcessingTime: 3.2,
-      piiItemsFound: 15637,
+      piiItemsFound: 847,
       period
     }
 
